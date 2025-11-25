@@ -14,7 +14,12 @@ namespace icone_backend.Models
         [Required]
         [MaxLength(100)]
         [Column("name")]
-        public string Name { get; set; } = null!;
+        public string FantasyName { get; set; } = null!;
+
+        [Required]
+        [MaxLength(100)]
+        [Column("corporate_name")]
+        public string CorporateName { get; set; } = null!;
 
         [Required]
         [MaxLength(20)]
@@ -22,14 +27,14 @@ namespace icone_backend.Models
         public string Document { get; set; } = null!;
 
         [Required]
-        [MaxLength(150)]
-        [Column("email")]
-        public string Email { get; set; } = null!;
-
-        [Required]
         [MaxLength(30)]
         [Column("phone")]
         public string Phone { get; set; } = null!;
+
+        [Required]
+        [MaxLength(50)]
+        [Column("website")]
+        public string Website { get; set; } = null!;
 
         [Required]
         [MaxLength(50)]

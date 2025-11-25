@@ -10,17 +10,24 @@ namespace icone_backend.Models
         [Key]
         [Column("id")]
         public long Id { get; set; }
-
-
-        [Required]
+        
         [Column("company_id")]
-        public long CompanyId { get; set; }
-
+        public long? CompanyId { get; set; }
 
         [Required]
         [MaxLength(100)]
-        [Column("name")]
-        public string Name { get; set; } = null!;
+        [Column("first_name")]
+        public string FirstName { get; set; } = null!;
+        
+        [Required]
+        [MaxLength(100)]
+        [Column("last_name")]
+        public string LastName { get; set; } = null!;
+
+        [Required]
+        [MaxLength(100)]
+        [Column("document")]
+        public string Document { get; set; } = null!;
 
         [Required]
         [MaxLength(150)]
