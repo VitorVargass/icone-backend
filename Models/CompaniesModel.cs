@@ -42,6 +42,37 @@ namespace icone_backend.Models
         public string Plan { get; set; } = null!;
 
         [Required]
+        [MaxLength(4)]
+        [Column("country_code")]
+        public string CountryCode { get; set; } = null!;
+
+        
+        [Required]
+        [MaxLength(20)]
+        [Column("postal_code")]
+        public string PostalCode { get; set; } = null!;
+
+        
+        [Required]
+        [MaxLength(100)]
+        [Column("state_region")]
+        public string StateRegion { get; set; } = null!;
+
+        [Required]
+        [MaxLength(100)]
+        [Column("city")]
+        public string City { get; set; } = null!;
+
+        [Required]
+        [MaxLength(150)]
+        [Column("line1")]
+        public string Line1 { get; set; } = null!;
+       
+        [MaxLength(150)]
+        [Column("line2")]
+        public string? Line2 { get; set; }
+
+        [Required]
         [Column("is_active")]
         public bool IsActive { get; set; } = true;
 

@@ -1,4 +1,6 @@
-﻿namespace icone_backend.Dtos.Auth
+﻿using icone_backend.Dtos.Address;
+
+namespace icone_backend.Dtos.Auth
 {
     public class RegisterCompanyStepRequest
     {
@@ -8,5 +10,7 @@
         public string CorporateName { get; set; } = null!;
         public string Phone { get; set; } = null!;
         public string? Website { get; set; }
+        public AddressDto Address { get; set; } = null!;
+
     }
 }

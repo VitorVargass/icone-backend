@@ -43,6 +43,9 @@ namespace icone_backend.Controllers
                 if (await _context.Users.AnyAsync(u => u.Email == request.Email))
                     return BadRequest("E-mail já cadastrado.");
 
+                if (await _context.Users.AnyAsync(u => u.Document == request.Document))
+                    return BadRequest("Documento já cadastrado.");
+
                 var user = new UserModel
                 {
                     FirstName = request.FirstName,
@@ -80,6 +83,15 @@ namespace icone_backend.Controllers
             if (user == null)
                 return NotFound("Usuário não encontrado.");
 
+            if (await _context.Companies.AnyAsync(u => u.Document == request.Document))
+                return BadRequest("Documento da empresa já cadastrado.");
+            if (await _context.Companies.AnyAsync(u => u.FantasyName == request.FantasyName))
+                return BadRequest("Nome Fantasia já cadastrado.");
+            if (await _context.Companies.AnyAsync(u => u.CorporateName == request.CorporateName))
+                return BadRequest("Nome Corporativo já cadastrado.");
+
+            var address = request.Address;
+
             var company = new CompaniesModel
             {
                 Document = request.Document,
@@ -87,6 +99,14 @@ namespace icone_backend.Controllers
                 CorporateName = request.CorporateName,
                 Phone = request.Phone,
                 Website = request.Website,
+
+                CountryCode = address.CountryCode,
+                PostalCode = address.PostalCode,
+                StateRegion = address.StateRegion,
+                City = address.City,
+                Line1 = address.Line1,
+                Line2 = address.Line2,
+
                 Plan = "0",
                 IsActive = false,
                 CreatedAt = DateTimeOffset.UtcNow
