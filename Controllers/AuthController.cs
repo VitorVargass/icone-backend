@@ -38,29 +38,39 @@ namespace icone_backend.Controllers
         [HttpPost("register-user")]
         public async Task<IActionResult> RegisterUser(RegisterUserStepRequest request)
         {
-            if (await _context.Users.AnyAsync(u => u.Email == request.Email))
-                return BadRequest("E-mail já cadastrado.");
-
-            var user = new UserModel
+            try
             {
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Email = request.Email,
-                PasswordHash = HashPassword(request.Password),
-                Role = "manager",
-                Document = request.Document,
-                IsActive = false,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
+                if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+                    return BadRequest("E-mail já cadastrado.");
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+                var user = new UserModel
+                {
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    Email = request.Email,
+                    PasswordHash = HashPassword(request.Password),
+                    Role = "manager",
+                    Document = request.Document,
+                    IsActive = false,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
 
-            return Ok(new
-            {
-                message = "Usuário criado. Prossiga para a etapa de empresa.",
-                userId = user.Id
-            });
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Usuário criado. Prossiga para a etapa de empresa.",
+                    userId = user.Id
+                });
+            } catch (Exception ex) {
+
+                Console.WriteLine("ERRO EM RegisterUser:");
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.StackTrace);
+
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
         [HttpPost("register-company")]

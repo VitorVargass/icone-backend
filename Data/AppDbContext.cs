@@ -15,7 +15,14 @@ namespace icone_backend.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
+            
+
+            modelBuilder.HasDefaultSchema("public");
+
+            
+            modelBuilder.Entity<AdminModel>().ToTable("admins");
+            modelBuilder.Entity<UserModel>().ToTable("users");
+            modelBuilder.Entity<CompaniesModel>().ToTable("companies");
 
             modelBuilder.Entity<UserModel>(entity =>
             {
@@ -31,6 +38,8 @@ namespace icone_backend.Data
             {
                 entity.HasKey(e => e.Id);
             });
+
+            base.OnModelCreating(modelBuilder);
         }
     }
 }
