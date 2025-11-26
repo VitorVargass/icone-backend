@@ -63,7 +63,12 @@ namespace icone_backend.Controllers
                 .FirstOrDefaultAsync(a => a.Id == id);
 
             if (admin is null)
-                return NotFound();
+                return NotFound(new Error
+                {
+                    Code = "ADMIN_NOT_FOUND",
+                    Message = "Admin não encontrado.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
 
             return Ok(new
             {
@@ -84,7 +89,12 @@ namespace icone_backend.Controllers
 
             var admin = await _context.Admins.FirstOrDefaultAsync(a => a.Id == id);
             if (admin is null)
-                return NotFound(new { message = "Admin não encontrado." });
+                return NotFound(new Error
+                {
+                    Code = "ADMIN_NOT_FOUND",
+                    Message = "Admin não encontrado.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
 
             
             if (!string.Equals(admin.Email, request.Email, StringComparison.OrdinalIgnoreCase))
@@ -130,7 +140,11 @@ namespace icone_backend.Controllers
         {
             var admin = await _context.Admins.FirstOrDefaultAsync(a => a.Id == id);
             if (admin is null)
-                return NotFound(new { message = "Admin não encontrado." });
+                return NotFound(new Error 
+                {   Code = "ADMIN_NOT_FOUND", 
+                    Message = "Admin não encontrado.", 
+                    TraceId = HttpContext.TraceIdentifier 
+                });
 
             _context.Admins.Remove(admin);
             await _context.SaveChangesAsync();

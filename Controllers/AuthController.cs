@@ -38,13 +38,44 @@ namespace icone_backend.Controllers
         [HttpPost("register-user")]
         public async Task<IActionResult> RegisterUser(RegisterUserStepRequest request)
         {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState
+                    .Where(x => x.Value?.Errors.Count > 0)
+                    .Select(x => new
+                    {
+                        Field = x.Key,
+                        Errors = x.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
+                    });
+
+                return BadRequest(new Error
+                {
+                    Code = "VALIDATION_ERROR",
+                    Message = "Existem erros de validação nos campos.",
+                    Details = string.Join(" | ", errors.SelectMany(e => e.Errors)),
+                    TraceId = HttpContext.TraceIdentifier
+                });
+            }
+
             try
             {
                 if (await _context.Users.AnyAsync(u => u.Email == request.Email))
-                    return BadRequest("E-mail já cadastrado.");
+                    return BadRequest(new Error
+                    {
+                        Code = "DUPLICATE_EMAIL",
+                        Message = "E-mail já cadastrado.",
+                        Field = "email",
+                        TraceId = HttpContext.TraceIdentifier
+                    });
 
                 if (await _context.Users.AnyAsync(u => u.Document == request.Document))
-                    return BadRequest("Documento já cadastrado.");
+                    return BadRequest(new Error
+                    {
+                        Code = "DUPLICATE_DOCUMENT",
+                        Message = "Documento já cadastrado.",
+                        Field = "documento",
+                        TraceId = HttpContext.TraceIdentifier
+                    });
 
                 var user = new UserModel
                 {
@@ -79,16 +110,58 @@ namespace icone_backend.Controllers
         [HttpPost("register-company")]
         public async Task<IActionResult> RegisterCompany(RegisterCompanyStepRequest request)
         {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState
+                    .Where(x => x.Value?.Errors.Count > 0)
+                    .Select(x => new
+                    {
+                        Field = x.Key,
+                        Errors = x.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
+                    });
+
+                return BadRequest(new Error
+                {
+                    Code = "VALIDATION_ERROR_COMPANY",
+                    Message = "Existem erros de validação nos campos.",
+                    Details = string.Join(" | ", errors.SelectMany(e => e.Errors)),
+                    TraceId = HttpContext.TraceIdentifier
+                });
+            }
+
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
             if (user == null)
-                return NotFound("Usuário não encontrado.");
+                return NotFound(new Error
+                {
+                    Code = "USER_NOT_FOUND",
+                    Message = "Usuário não encontrado.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
 
             if (await _context.Companies.AnyAsync(u => u.Document == request.Document))
-                return BadRequest("Documento da empresa já cadastrado.");
+                return BadRequest(new Error
+                {
+                    Code = "DUPLICATE_DOCUMENT_COMPANY",
+                    Message = "Documento da empresa já cadastrado.",
+                    Field = "documento_empresa",
+                    TraceId = HttpContext.TraceIdentifier
+                });
             if (await _context.Companies.AnyAsync(u => u.FantasyName == request.FantasyName))
-                return BadRequest("Nome Fantasia já cadastrado.");
+                return BadRequest(new Error
+                {
+                    Code = "DUPLICATE_FANTASY_NAME",
+                    Message = "Nome Fantasia já cadastrado.",
+                    Field = "nome_fantasia",
+                    TraceId = HttpContext.TraceIdentifier
+                });
             if (await _context.Companies.AnyAsync(u => u.CorporateName == request.CorporateName))
-                return BadRequest("Nome Corporativo já cadastrado.");
+                return BadRequest(new Error
+                {
+                    Code = "DUPLICATE_CORPORATE_NAME",
+                    Message = "Nome Corporativo já cadastrado.",
+                    Field = "corporate_name",
+                    TraceId = HttpContext.TraceIdentifier
+                });
 
             var address = request.Address;
 
@@ -136,7 +209,12 @@ namespace icone_backend.Controllers
             .FirstOrDefaultAsync(u => u.Email == request.Email);
 
             if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
-                return Unauthorized("Invalid email or password.");
+                return Unauthorized(new Error
+                {
+                    Code = "INVALID_CREDENTIALS",
+                    Message = "E-mail ou senha inválidos.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
 
             var token = _tokenService.GenerateToken(user);
 
@@ -161,7 +239,12 @@ namespace icone_backend.Controllers
         {
             var user = await _context.Set<UserModel>().FirstOrDefaultAsync(u => u.Email == request.Email);
             if (user == null)
-                return NotFound("User not found.");
+                return NotFound(new Error
+                {
+                    Code = "USER_NOT_FOUND",
+                    Message = "Usuário não encontrado.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
             
             return Ok(new { message = "Password reset instructions sent to your email." });
         }

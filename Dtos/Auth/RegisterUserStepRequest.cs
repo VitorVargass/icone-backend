@@ -1,11 +1,29 @@
-﻿namespace icone_backend.Dtos.Auth
+﻿using icone_backend.Attributes;
+using System.ComponentModel.DataAnnotations;
+
+namespace icone_backend.Dtos.Auth
 {
     public class RegisterUserStepRequest
     {
+        [Required(ErrorMessage = "O nome é obrigatório.")]
         public string FirstName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "O sobrenome é obrigatório.")]
         public string LastName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "O e-mail é obrigatório.")]
+        [EmailAddress(ErrorMessage = "Formato de e-mail inválido.")]
         public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "O documento é obrigatório.")]
         public string Document { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "A senha é obrigatória.")]
+        [Password(MinLength = 8)]
         public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "A confirmação de senha é obrigatória.")]
+        [Compare("Password", ErrorMessage = "As senhas não coincidem.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }
