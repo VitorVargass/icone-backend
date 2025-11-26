@@ -17,26 +17,26 @@ namespace icone_backend.Models
         [Required]
         [MaxLength(100)]
         [Column("first_name")]
-        public string FirstName { get; set; } = null!;
-        
+        public string FirstName { get; set; } = string.Empty;
+
         [Required]
         [MaxLength(100)]
         [Column("last_name")]
-        public string LastName { get; set; } = null!;
+        public string LastName { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(100)]
         [Column("document")]
-        public string Document { get; set; } = null!;
+        public string Document { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(150)]
         [Column("email")]
-        public string Email { get; set; } = null!;
+        public string Email { get; set; } = string.Empty;
 
         [Required]
         [Column("password_hash")]
-        public string PasswordHash { get; set; } = null!;
+        public string PasswordHash { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(30)]
@@ -45,7 +45,12 @@ namespace icone_backend.Models
 
         [Required]
         [Column("is_active")]
-        public bool IsActive { get; set; } = true;
+        public bool IsActive { get; set; }
+
+        [Required]
+        [MaxLength(50)]
+        [Column("onboarding_step")]
+        public string OnboardingStep { get; set; } = "contact";
 
         [Required]
         [Column("created_at")]

@@ -1,4 +1,5 @@
-﻿using icone_backend.Dtos.Address;
+﻿using icone_backend.Attributes;
+using icone_backend.Dtos.Address;
 using System.ComponentModel.DataAnnotations;
 
 namespace icone_backend.Dtos.Auth
@@ -9,6 +10,7 @@ namespace icone_backend.Dtos.Auth
         public long UserId { get; set; }
 
         [Required(ErrorMessage = "O documento da empresa é obrigatório.")]
+        [Document(AllowDotsAndDashes = false)]
         public string Document { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "O nome fantasia é obrigatório.")]

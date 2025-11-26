@@ -32,7 +32,7 @@ namespace icone_backend.Models
         public string Phone { get; set; } = null!;
 
         [Required]
-        [MaxLength(50)]
+        [MaxLength(100)]
         [Column("website")]
         public string Website { get; set; } = null!;
 

@@ -86,6 +86,7 @@ namespace icone_backend.Controllers
                     Role = "manager",
                     Document = request.Document,
                     IsActive = false,
+                    OnboardingStep = OnboardingSteps.Contact,
                     CreatedAt = DateTimeOffset.UtcNow
                 };
 
@@ -173,7 +174,7 @@ namespace icone_backend.Controllers
                 Phone = request.Phone,
                 Website = request.Website,
 
-                CountryCode = address.CountryCode,
+                CountryCode = address.CountryCode.ToUpperInvariant(),
                 PostalCode = address.PostalCode,
                 StateRegion = address.StateRegion,
                 City = address.City,
@@ -189,6 +190,7 @@ namespace icone_backend.Controllers
             await _context.SaveChangesAsync();
 
             user.CompanyId = company.Id;
+            user.OnboardingStep = OnboardingSteps.Company;
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
 
