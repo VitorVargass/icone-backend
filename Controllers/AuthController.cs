@@ -167,7 +167,7 @@ namespace icone_backend.Controllers
 
             
             var user = await _context.Users
-                .Include(u => u.CompanyId)
+                .Include(u => u.Company)
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
 
