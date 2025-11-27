@@ -50,11 +50,15 @@ namespace icone_backend.Models
         [Required]
         [MaxLength(50)]
         [Column("onboarding_step")]
-        public string OnboardingStep { get; set; } = "contact";
+        public string OnboardingStep { get; set; } = OnboardingSteps.Contact;
 
         [Required]
         [Column("created_at")]
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+        // 🔹 Relação com CompaniesModel
+        [ForeignKey("CompanyId")]
+        public CompaniesModel? Company { get; set; }
 
     }
 }

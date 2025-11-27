@@ -1,12 +1,15 @@
-﻿using icone_backend.Data;
+﻿using BCrypt.Net;
+using icone_backend.Data;
+using icone_backend.Dtos.Auth;
 using icone_backend.Models;
+using icone_backend.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Text;
+using System.Security.Claims;
 using System.Security.Cryptography;
-using icone_backend.Dtos.Auth;
-using BCrypt.Net;
-using icone_backend.Services;
+using System.Text;
+using System.IdentityModel.Tokens.Jwt;
 
 
 
@@ -92,11 +95,11 @@ namespace icone_backend.Controllers
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
-
+                var token = _tokenService.GenerateToken(user);
                 return Ok(new
                 {
-                    message = "Usuário criado. Prossiga para a etapa de empresa.",
-                    userId = user.Id
+                    message = "Usuário criado. Prossiga para proxima etapa.", token
+
                 });
             } catch (Exception ex) {
 
@@ -107,101 +110,6 @@ namespace icone_backend.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-
-        [HttpPost("register-company")]
-        public async Task<IActionResult> RegisterCompany(RegisterCompanyStepRequest request)
-        {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState
-                    .Where(x => x.Value?.Errors.Count > 0)
-                    .Select(x => new
-                    {
-                        Field = x.Key,
-                        Errors = x.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
-                    });
-
-                return BadRequest(new Error
-                {
-                    Code = "VALIDATION_ERROR_COMPANY",
-                    Message = "Existem erros de validação nos campos.",
-                    Details = string.Join(" | ", errors.SelectMany(e => e.Errors)),
-                    TraceId = HttpContext.TraceIdentifier
-                });
-            }
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
-            if (user == null)
-                return NotFound(new Error
-                {
-                    Code = "USER_NOT_FOUND",
-                    Message = "Usuário não encontrado.",
-                    TraceId = HttpContext.TraceIdentifier
-                });
-
-            if (await _context.Companies.AnyAsync(u => u.Document == request.Document))
-                return BadRequest(new Error
-                {
-                    Code = "DUPLICATE_DOCUMENT_COMPANY",
-                    Message = "Documento da empresa já cadastrado.",
-                    Field = "documento_empresa",
-                    TraceId = HttpContext.TraceIdentifier
-                });
-            if (await _context.Companies.AnyAsync(u => u.FantasyName == request.FantasyName))
-                return BadRequest(new Error
-                {
-                    Code = "DUPLICATE_FANTASY_NAME",
-                    Message = "Nome Fantasia já cadastrado.",
-                    Field = "nome_fantasia",
-                    TraceId = HttpContext.TraceIdentifier
-                });
-            if (await _context.Companies.AnyAsync(u => u.CorporateName == request.CorporateName))
-                return BadRequest(new Error
-                {
-                    Code = "DUPLICATE_CORPORATE_NAME",
-                    Message = "Nome Corporativo já cadastrado.",
-                    Field = "corporate_name",
-                    TraceId = HttpContext.TraceIdentifier
-                });
-
-            var address = request.Address;
-
-            var company = new CompaniesModel
-            {
-                Document = request.Document,
-                FantasyName = request.FantasyName,
-                CorporateName = request.CorporateName,
-                Phone = request.Phone,
-                Website = request.Website,
-
-                CountryCode = address.CountryCode.ToUpperInvariant(),
-                PostalCode = address.PostalCode,
-                StateRegion = address.StateRegion,
-                City = address.City,
-                Line1 = address.Line1,
-                Line2 = address.Line2,
-
-                Plan = "0",
-                IsActive = false,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            _context.Companies.Add(company);
-            await _context.SaveChangesAsync();
-
-            user.CompanyId = company.Id;
-            user.OnboardingStep = OnboardingSteps.Company;
-            _context.Users.Update(user);
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = "Empresa vinculada com sucesso.",
-                companyId = company.Id
-            });
-        }
-
-
 
         // --------------------------------------------------------------------------
         [HttpPost("login")]
@@ -236,6 +144,63 @@ namespace icone_backend.Controllers
                 });
             
             return Ok(new { message = "Password reset instructions sent to your email." });
+        }
+
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetMe()
+        {
+            // 1) Pega o ID do usuário a partir do token (claim "sub")
+            var userIdClaim =
+                User.FindFirstValue(JwtRegisteredClaimNames.Sub) ??
+                User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim) || !long.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new Error
+                {
+                    Code = "INVALID_TOKEN",
+                    Message = "Token inválido ou usuário não identificado.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
+            }
+
+            
+            var user = await _context.Users
+                .Include(u => u.CompanyId)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+
+            if (user == null)
+            {
+                return NotFound(new Error
+                {
+                    Code = "USER_NOT_FOUND",
+                    Message = "Usuário não encontrado.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
+            }
+
+            // 3) Monta o objeto de resposta (só o que o front precisa)
+            return Ok(new
+            {
+                id = user.Id,
+                firstName = user.FirstName,
+                lastName = user.LastName,
+                email = user.Email,
+                role = user.Role,
+                companyId = user.CompanyId,
+                onboardingStep = user.OnboardingStep.ToString().ToLowerInvariant(),
+                isActive = user.IsActive,
+                company =  user.Company == null ? null : new
+                {
+                    id = user.Company.Id,
+                    fantasyName = user.Company.FantasyName,
+                    corporateName = user.Company.CorporateName,
+                    plan = user.Company.Plan,
+                    isActive = user.Company.IsActive
+                }
+            });
         }
     }
 }
