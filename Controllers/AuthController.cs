@@ -220,21 +220,8 @@ namespace icone_backend.Controllers
 
             var token = _tokenService.GenerateToken(user);
 
-            return Ok(new
-            {
-                message = "Login successful!",
-                token,
-                user = new
-                {
-                    user.Id,
-                    user.FirstName,
-                    user.LastName,
-                    user.Email,
-                    user.Role,
-                    user.CompanyId
-                }
-            });
-        }
+           return Ok(new { message = "Login successful!", token});
+        } 
 
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)

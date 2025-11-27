@@ -32,7 +32,9 @@ namespace icone_backend.Services
                 new Claim(ClaimTypes.GivenName, user.FirstName),
                 new Claim(ClaimTypes.Surname, user.LastName),
                 new Claim(ClaimTypes.Role, user.Role),
-                new Claim("companyId", user.CompanyId.ToString())
+                new Claim("companyId", user.CompanyId?.ToString() ?? string.Empty),
+                new Claim("onboardingStep", user.OnboardingStep.ToString()),
+                new Claim("isActive", user.IsActive.ToString())
             };
 
             var token = new JwtSecurityToken(
