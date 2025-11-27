@@ -7,7 +7,6 @@ namespace icone_backend.Dtos.Address
     {
         [Required(ErrorMessage = "O país é obrigatório.")]
         [StringLength(2, MinimumLength = 2, ErrorMessage = "O código do país deve ter exatamente 2 letras.")]
-        [RegularExpression("^[A-Za-z]{2}$", ErrorMessage = "O código do país deve conter apenas letras.")]
         public string CountryCode { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "O CEP é obrigatório.")]
