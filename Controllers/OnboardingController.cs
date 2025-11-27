@@ -36,6 +36,62 @@ namespace icone_backend.Controllers
             return userId;
         }
 
+        // GET /Onboarding/company
+        [HttpGet("GetCompany")]
+        public async Task<IActionResult> GetCompany()
+        {
+            var userId = GetCurrentUserId();
+
+            var user = await _context.Users
+                .Include(u => u.Company)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+            {
+                return NotFound(new Error
+                {
+                    Code = "USER_NOT_FOUND",
+                    Message = "Usuário não encontrado.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
+            }
+
+            if (user.Company == null)
+            {
+                return NotFound(new Error
+                {
+                    Code = "COMPANY_NOT_FOUND",
+                    Message = "Usuário ainda não possui empresa vinculada.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
+            }
+
+            var company = user.Company;
+
+            return Ok(new
+            {
+                document = company.Document,
+                fantasyName = company.FantasyName,
+                corporateName = company.CorporateName,
+                phone = company.Phone,
+                website = company.Website,
+                address = new
+                {
+                    countryCode = company.CountryCode,
+                    postalCode = company.PostalCode,
+                    stateRegion = company.StateRegion,
+                    city = company.City,
+                    line1 = company.Line1,
+                    line2 = company.Line2
+                },
+                plan = company.Plan,
+                isActive = company.IsActive,
+                createdAt = company.CreatedAt
+            });
+        }
+
+
+
         // PUT /Onboarding/company
         [HttpPut("company")]
         public async Task<IActionResult> RegisterOrUpdateCompany(RegisterCompanyStepRequest request)
@@ -182,10 +238,9 @@ namespace icone_backend.Controllers
         
         }
         [HttpPut("plan")]
-        public async Task<IActionResult> UpdatePlan([FromBody] dynamic body)
+        public async Task<IActionResult> UpdatePlan([FromBody] UpdatePlanRequest request)
         {
-            string? planCode = body?.planCode;
-            if (string.IsNullOrWhiteSpace(planCode))
+            if (string.IsNullOrWhiteSpace(request.PlanCode))
                 return BadRequest(new { success = false, message = "O campo 'planCode' é obrigatório." });
 
             var userId = GetCurrentUserId();
@@ -201,7 +256,7 @@ namespace icone_backend.Controllers
             if (company == null)
                 return NotFound(new { success = false, message = "Empresa não encontrada." });
 
-            company.Plan = planCode;
+            company.Plan = request.PlanCode;
             user.OnboardingStep = OnboardingSteps.Plan;
 
             _context.Update(company);
@@ -212,9 +267,9 @@ namespace icone_backend.Controllers
         }
 
         [HttpPost("complete")]
-        public async Task<IActionResult> CompleteOnboarding([FromBody] dynamic body)
+        public async Task<IActionResult> CompleteOnboarding([FromBody] CompleteOnboardingRequest request)
         {
-            string? planCode = body?.planCode; 
+            string? planCode = request.PlanCode; 
             var userId = GetCurrentUserId();
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
