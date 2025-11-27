@@ -37,7 +37,7 @@ namespace icone_backend.Controllers
         }
 
         // GET /Onboarding/company
-        [HttpGet("GetCompany")]
+        [HttpGet("company")]
         public async Task<IActionResult> GetCompany()
         {
             var userId = GetCurrentUserId();
@@ -56,39 +56,34 @@ namespace icone_backend.Controllers
                 });
             }
 
-            if (user.Company == null)
-            {
-                return NotFound(new Error
-                {
-                    Code = "COMPANY_NOT_FOUND",
-                    Message = "Usuário ainda não possui empresa vinculada.",
-                    TraceId = HttpContext.TraceIdentifier
-                });
-            }
-
             var company = user.Company;
 
             return Ok(new
             {
-                document = company.Document,
-                fantasyName = company.FantasyName,
-                corporateName = company.CorporateName,
-                phone = company.Phone,
-                website = company.Website,
-                address = new
+                hasCompany = company != null,
+                company = new
                 {
-                    countryCode = company.CountryCode,
-                    postalCode = company.PostalCode,
-                    stateRegion = company.StateRegion,
-                    city = company.City,
-                    line1 = company.Line1,
-                    line2 = company.Line2
-                },
-                plan = company.Plan,
-                isActive = company.IsActive,
-                createdAt = company.CreatedAt
+                    document = company?.Document ?? string.Empty,
+                    fantasyName = company?.FantasyName ?? string.Empty,
+                    corporateName = company?.CorporateName ?? string.Empty,
+                    phone = company?.Phone ?? string.Empty,
+                    website = company?.Website ?? string.Empty,
+                    address = new
+                    {
+                        countryCode = company?.CountryCode ?? string.Empty,
+                        postalCode = company?.PostalCode ?? string.Empty,
+                        stateRegion = company?.StateRegion ?? string.Empty,
+                        city = company?.City ?? string.Empty,
+                        line1 = company?.Line1 ?? string.Empty,
+                        line2 = company?.Line2 ?? string.Empty
+                    },
+                    plan = company?.Plan ?? string.Empty,
+                    isActive = company?.IsActive ?? false,
+                    createdAt = company?.CreatedAt
+                }
             });
         }
+
 
 
 
