@@ -11,12 +11,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 
-
-
 namespace icone_backend.Controllers
 {
     [ApiController]
-    [Route("Auth")]
+    [Route("auth")]
     public class AuthController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -38,8 +36,8 @@ namespace icone_backend.Controllers
             return BCrypt.Net.BCrypt.Verify(password, hash);
         }
 
-        [HttpPost("register-user")]
-        public async Task<IActionResult> RegisterUser(RegisterUserStepRequest request)
+        [HttpPost("signup")]
+        public async Task<IActionResult> Register(RegisterAccount request)
         {
             if (!ModelState.IsValid)
             {
@@ -62,7 +60,13 @@ namespace icone_backend.Controllers
 
             try
             {
-                if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+
+                var email = request.Email?.Trim().ToLowerInvariant();
+                var documentCompany = request.DocumentCompany?.Trim();
+                var fantasyName = request.FantasyName?.Trim();
+                var corporateName = request.CorporateName?.Trim();
+
+                if (!string.IsNullOrEmpty(email) && await _context.Users.AnyAsync(u => u.Email == email))
                     return BadRequest(new Error
                     {
                         Code = "DUPLICATE_EMAIL",
@@ -71,44 +75,94 @@ namespace icone_backend.Controllers
                         TraceId = HttpContext.TraceIdentifier
                     });
 
-                if (await _context.Users.AnyAsync(u => u.Document == request.Document))
+                if (!string.IsNullOrEmpty(documentCompany) && await _context.Companies.AnyAsync(c => c.DocumentCompany == documentCompany))
                     return BadRequest(new Error
                     {
-                        Code = "DUPLICATE_DOCUMENT",
-                        Message = "Documento já cadastrado.",
-                        Field = "documento",
+                        Code = "DUPLICATE_DOCUMENT_COMPANY",
+                        Message = "Documento da empresa já cadastrado.",
+                        Field = "documento_empresa",
                         TraceId = HttpContext.TraceIdentifier
                     });
+
+                if (!string.IsNullOrEmpty(fantasyName) && await _context.Companies.AnyAsync(c => c.FantasyName == fantasyName))
+                    return BadRequest(new Error
+                    {
+                        Code = "DUPLICATE_FANTASY_NAME",
+                        Message = "Nome Fantasia já cadastrado.",
+                        Field = "nome_fantasia",
+                        TraceId = HttpContext.TraceIdentifier
+                    });
+
+                if (!string.IsNullOrEmpty(corporateName) && await _context.Companies.AnyAsync(c => c.CorporateName == corporateName))
+                    return BadRequest(new Error
+                    {
+                        Code = "DUPLICATE_CORPORATE_NAME",
+                        Message = "Nome Corporativo já cadastrado.",
+                        Field = "corporate_name",
+                        TraceId = HttpContext.TraceIdentifier
+                    });
+
+                // valida AddressDto (ModelState já cobre, mas garantimos null-safety)
+                var addr = request.Address ?? throw new ArgumentException("Address is required");
+
+                // cria company e user na mesma transação
+                await using var tx = await _context.Database.BeginTransactionAsync();
+
+                var company = new CompaniesModel
+                {
+                    FantasyName = fantasyName ?? string.Empty,
+                    CorporateName = corporateName ?? string.Empty,
+                    DocumentCompany = documentCompany ?? string.Empty,
+                    Phone = request.Phone?.Trim() ?? string.Empty,
+                    Website = request.Website ?? string.Empty,
+                    Plan = "free", // default — ajuste conforme regras do sistema
+                    CountryCode = addr.CountryCode.Trim(),
+                    PostalCode = addr.PostalCode.Trim(),
+                    StateRegion = addr.StateRegion.Trim(),
+                    City = addr.City.Trim(),
+                    Line1 = addr.Line1.Trim(),
+                    Line2 = addr.Line2?.Trim(),
+                    IsActive = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+
+                _context.Companies.Add(company);
+                await _context.SaveChangesAsync();
 
                 var user = new UserModel
                 {
                     FirstName = request.FirstName,
                     LastName = request.LastName,
-                    Email = request.Email,
+                    Email = email ?? string.Empty,
                     PasswordHash = HashPassword(request.Password),
-                    Role = "manager",
-                    Document = request.Document,
+                    Role = "admin",
                     IsActive = false,
-                    OnboardingStep = OnboardingSteps.Contact,
+                    CompanyId = company.Id,
                     CreatedAt = DateTimeOffset.UtcNow
                 };
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
+
+                await tx.CommitAsync();
+
                 var token = _tokenService.GenerateToken(user);
                 return Ok(new
                 {
-                    message = "Usuário criado. Prossiga para proxima etapa.", token
-
+                    message = "Usuário e empresa criados. Prossiga para próxima etapa.",
+                    token
                 });
-            } catch (Exception ex) {
 
+            }
+            catch (Exception ex)
+            {
                 Console.WriteLine("ERRO EM RegisterUser:");
                 Console.WriteLine(ex.Message);
                 Console.WriteLine(ex.StackTrace);
 
                 return StatusCode(500, new { error = ex.Message });
             }
+            ;
         }
 
         // --------------------------------------------------------------------------
@@ -129,7 +183,7 @@ namespace icone_backend.Controllers
             var token = _tokenService.GenerateToken(user);
 
            return Ok(new { message = "Login successful!", token});
-        } 
+        }
 
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
@@ -142,7 +196,7 @@ namespace icone_backend.Controllers
                     Message = "Usuário não encontrado.",
                     TraceId = HttpContext.TraceIdentifier
                 });
-            
+
             return Ok(new { message = "Password reset instructions sent to your email." });
         }
 
@@ -165,11 +219,9 @@ namespace icone_backend.Controllers
                 });
             }
 
-            
             var user = await _context.Users
                 .Include(u => u.Company)
                 .FirstOrDefaultAsync(u => u.Id == userId);
-
 
             if (user == null)
             {
@@ -190,7 +242,6 @@ namespace icone_backend.Controllers
                 email = user.Email,
                 role = user.Role,
                 companyId = user.CompanyId,
-                onboardingStep = user.OnboardingStep.ToString().ToLowerInvariant(),
                 isActive = user.IsActive,
                 company =  user.Company == null ? null : new
                 {

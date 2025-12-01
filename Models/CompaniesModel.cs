@@ -24,7 +24,7 @@ namespace icone_backend.Models
         [Required]
         [MaxLength(20)]
         [Column("document")]
-        public string Document { get; set; } = null!;
+        public string DocumentCompany { get; set; } = null!;
 
         [Required]
         [MaxLength(30)]

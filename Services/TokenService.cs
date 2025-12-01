@@ -28,12 +28,11 @@ namespace icone_backend.Services
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(ClaimTypes.GivenName, user.FirstName),
-                new Claim(ClaimTypes.Surname, user.LastName),
-                new Claim(ClaimTypes.Role, user.Role),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+                new Claim(ClaimTypes.GivenName, user.FirstName ?? string.Empty),
+                new Claim(ClaimTypes.Surname, user.LastName ?? string.Empty),
+                new Claim(ClaimTypes.Role, user.Role ?? string.Empty),
                 new Claim("companyId", user.CompanyId?.ToString() ?? string.Empty),
-                new Claim("onboardingStep", user.OnboardingStep.ToString()),
                 new Claim("isActive", user.IsActive.ToString())
             };
 

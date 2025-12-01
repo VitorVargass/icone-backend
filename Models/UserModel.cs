@@ -48,11 +48,6 @@ namespace icone_backend.Models
         public bool IsActive { get; set; }
 
         [Required]
-        [MaxLength(50)]
-        [Column("onboarding_step")]
-        public string OnboardingStep { get; set; } = OnboardingSteps.Contact;
-
-        [Required]
         [Column("created_at")]
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
