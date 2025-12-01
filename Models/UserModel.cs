@@ -25,11 +25,6 @@ namespace icone_backend.Models
         public string LastName { get; set; } = string.Empty;
 
         [Required]
-        [MaxLength(100)]
-        [Column("document")]
-        public string Document { get; set; } = string.Empty;
-
-        [Required]
         [MaxLength(150)]
         [Column("email")]
         public string Email { get; set; } = string.Empty;

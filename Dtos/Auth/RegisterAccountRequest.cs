@@ -18,10 +18,6 @@ namespace icone_backend.Dtos.Auth
         [EmailAddress(ErrorMessage = "Invalid email format.")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "The document is required")]
-        [Document(AllowDotsAndDashes = false)]
-        public string Document { get; set; } = string.Empty;
-
         [Required(ErrorMessage = "The password is required")]
         [Password(MinLength = 8)]
         public string Password { get; set; } = string.Empty;
