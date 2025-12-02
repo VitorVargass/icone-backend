@@ -72,6 +72,17 @@ namespace icone_backend.Controllers
                 var fantasyName = request.FantasyName?.Trim();
                 var corporateName = request.CorporateName?.Trim();
 
+                if (string.IsNullOrEmpty(email) || !_twoFactorService.IsSignupEmailVerified(email))
+                {
+                    return BadRequest(new Error
+                    {
+                        Code = "EMAIL_NOT_VERIFIED",
+                        Message = "Você precisa verificar o e-mail antes de continuar.",
+                        Field = "email",
+                        TraceId = HttpContext.TraceIdentifier
+                    });
+                }
+
                 if (!string.IsNullOrEmpty(email) && await _context.Users.AnyAsync(u => u.Email == email))
                     return BadRequest(new Error
                     {
@@ -171,6 +182,23 @@ namespace icone_backend.Controllers
             ;
         }
 
+        // Request Email and send Code
+        [HttpPost("signup/email-code")]
+        public async Task<IActionResult> SendSignupEmailCode([FromBody] SignupEmailCodeRequest request)
+        {
+            var email = request.Email?.Trim().ToLowerInvariant();
+
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest(new { message = "E-mail é obrigatório." });
+            }
+
+            // aqui você gera e envia o código de verificação para esse e-mail
+            await _twoFactorService.SendSignupEmailCodeAsync(email);
+
+            return Ok(new { message = "Enviamos um código de verificação para o seu e-mail." });
+        }
+
         // Verify Email Signup
         [HttpPost("signup/email-code/verify")]
         public async Task<IActionResult> VerifySignupEmailCode([FromBody] VerifySignupEmailCodeRequest request)
@@ -187,7 +215,7 @@ namespace icone_backend.Controllers
 
             if (!valid)
             {
-                
+
                 return Ok(new { valid = false });
             }
 
@@ -198,8 +226,10 @@ namespace icone_backend.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequest request)
         {
+            var email = request.Email?.Trim().ToLowerInvariant();
+
             var user = await _context.Set<UserModel>()
-                .FirstOrDefaultAsync(u => u.Email == request.Email);
+                .FirstOrDefaultAsync(u => u.Email == email);
 
             if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
             {
