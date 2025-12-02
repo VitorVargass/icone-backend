@@ -267,7 +267,7 @@ namespace icone_backend.Controllers
             var resetToken = _twoFactorService.CacheResetToken(user.Id, TimeSpan.FromMinutes(10));
 
             // Monta o link de redefinição
-            var resetLink = $"https://icone.academy/auth/reset-password?token={resetToken}";
+            var resetLink = $"https://icone.academy/reset-password?token={resetToken}";
 
             await _twoFactorService.SendPasswordResetEmailAsync(user.Email, resetLink);
 
