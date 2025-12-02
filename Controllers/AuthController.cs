@@ -19,11 +19,17 @@ namespace icone_backend.Controllers
     {
         private readonly AppDbContext _context;
         private readonly TokenService _tokenService;
+        private readonly TwoFactorService _twoFactorService;
+        private readonly UserService _userService;
 
-        public AuthController(AppDbContext context, TokenService tokenService)
+
+        public AuthController(AppDbContext context, TokenService tokenService, TwoFactorService twoFactorService,
+    UserService userService)
         {
             _context = context;
             _tokenService = tokenService;
+            _twoFactorService = twoFactorService;
+            _userService = userService;
         }
 
         private string HashPassword(string password)
@@ -136,7 +142,7 @@ namespace icone_backend.Controllers
                     Email = email ?? string.Empty,
                     PasswordHash = HashPassword(request.Password),
                     Role = "admin",
-                    IsActive = false,
+                    IsActive = true,
                     CompanyId = company.Id,
                     CreatedAt = DateTimeOffset.UtcNow
                 };
@@ -170,7 +176,7 @@ namespace icone_backend.Controllers
         public async Task<IActionResult> Login(LoginRequest request)
         {
             var user = await _context.Set<UserModel>()
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+                .FirstOrDefaultAsync(u => u.Email == request.Email);
 
             if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
                 return Unauthorized(new Error
@@ -180,10 +186,33 @@ namespace icone_backend.Controllers
                     TraceId = HttpContext.TraceIdentifier
                 });
 
-            var token = _tokenService.GenerateToken(user);
+            var twoFactorToken = await _twoFactorService.GenerateAndSendCodeAsync(user.Id, user.Email);
 
-           return Ok(new { message = "Login successful!", token});
+            return Ok(new
+            {
+                message = "Código de verificação enviado para seu e-mail.",
+                twoFactorRequired = true,
+                twoFactorToken
+            });
         }
+
+
+        [HttpPost("verify-2fa")]
+        public async Task<IActionResult> VerifyTwoFactor([FromBody] VerifyTwoFactorRequest request)
+        {
+            var result = await _twoFactorService.ValidateCodeAsync(request.TwoFactorToken, request.Code);
+            if (!result.Success)
+            {
+                return BadRequest(new { code = "INVALID_2FA_CODE" });
+            }
+
+            var user = await _userService.FindByIdAsync(result.UserId);
+            if (user == null) return Unauthorized();
+
+            var jwt = _tokenService.GenerateToken(user);
+            return Ok(new { token = jwt });
+        }
+
 
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
@@ -204,7 +233,7 @@ namespace icone_backend.Controllers
         [Authorize]
         public async Task<IActionResult> GetMe()
         {
-            // 1) Pega o ID do usuário a partir do token (claim "sub")
+            
             var userIdClaim =
                 User.FindFirstValue(JwtRegisteredClaimNames.Sub) ??
                 User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -233,7 +262,7 @@ namespace icone_backend.Controllers
                 });
             }
 
-            // 3) Monta o objeto de resposta (só o que o front precisa)
+            
             return Ok(new
             {
                 id = user.Id,

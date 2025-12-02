@@ -17,6 +17,11 @@ namespace icone_backend
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            Console.WriteLine($"ENV: {builder.Environment.EnvironmentName}");
+            Console.WriteLine($"Resend:ApiKey = '{builder.Configuration["Resend:ApiKey"]}'");
+            Console.WriteLine($"Resend:FromEmail = '{builder.Configuration["Resend:FromEmail"]}'");
+
+
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 
@@ -28,7 +33,9 @@ namespace icone_backend
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-           // Cors
+            builder.Services.AddHttpClient<IEmailSender, ResendEmailSender>();
+
+            // Cors
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
@@ -66,6 +73,9 @@ namespace icone_backend
         });
 
             builder.Services.AddScoped<TokenService>();
+            builder.Services.AddMemoryCache();
+            builder.Services.AddScoped<TwoFactorService>();
+            builder.Services.AddScoped<UserService>();
 
             var app = builder.Build();
 
