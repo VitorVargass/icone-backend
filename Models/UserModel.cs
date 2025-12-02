@@ -47,6 +47,8 @@ namespace icone_backend.Models
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
         public DateTimeOffset? LastTwoFactorVerifiedAt { get; set; }
+        public DateTimeOffset? LastLoginAt { get; set; }
+
 
 
         // 🔹 Relação com CompaniesModel

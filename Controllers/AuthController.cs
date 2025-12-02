@@ -197,6 +197,9 @@ namespace icone_backend.Controllers
 
             if (!requireTwoFactor)
             {
+                user.LastLoginAt = now;
+                await _context.SaveChangesAsync();
+
                 var token = _tokenService.GenerateToken(user);
                 return Ok(new
                 {
@@ -227,6 +230,12 @@ namespace icone_backend.Controllers
 
             var user = await _userService.FindByIdAsync(result.UserId);
             if (user == null) return Unauthorized();
+
+            var now = DateTimeOffset.UtcNow;
+
+            user.LastTwoFactorVerifiedAt = now;
+            user.LastLoginAt = now;
+            await _context.SaveChangesAsync();
 
             var jwt = _tokenService.GenerateToken(user);
             return Ok(new { token = jwt });
