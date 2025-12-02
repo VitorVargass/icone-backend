@@ -171,6 +171,29 @@ namespace icone_backend.Controllers
             ;
         }
 
+        // Verify Email Signup
+        [HttpPost("signup/email-code/verify")]
+        public async Task<IActionResult> VerifySignupEmailCode([FromBody] VerifySignupEmailCodeRequest request)
+        {
+            var email = request.Email?.Trim().ToLowerInvariant();
+            var code = request.Code?.Trim();
+
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(code))
+            {
+                return BadRequest(new { message = "E-mail e código são obrigatórios.", valid = false });
+            }
+
+            var valid = await _twoFactorService.VerifySignupEmailCodeAsync(email, code);
+
+            if (!valid)
+            {
+                
+                return Ok(new { valid = false });
+            }
+
+            return Ok(new { valid = true });
+        }
+
         // --------------------------------------------------------------------------
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequest request)

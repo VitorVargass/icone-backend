@@ -90,5 +90,51 @@ namespace icone_backend.Services
         {
             return _emailSender.SendPasswordResetEmailAsync(email, resetLink);
         }
+
+        private static string SignupCodeKey(string email) =>
+                    $"signup_code_{email}";
+
+        private static string SignupVerifiedKey(string email) =>
+            $"signup_verified_{email}";
+
+
+        public async Task SendSignupEmailCodeAsync(string email)
+        {
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+            var code = new Random().Next(100000, 999999).ToString();
+
+            _cache.Set(SignupCodeKey(normalizedEmail), code, TimeSpan.FromMinutes(10));
+
+            
+            await _emailSender.SendTwoFactorCodeAsync(normalizedEmail, code);
+            _logger.LogInformation("Código de verificação de signup enviado para {Email}", normalizedEmail);
+        }
+
+        public Task<bool> VerifySignupEmailCodeAsync(string email, string code)
+        {
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+
+            if (!_cache.TryGetValue<string>(SignupCodeKey(normalizedEmail), out var storedCode))
+            {
+                return Task.FromResult(false);
+            }
+
+            if (!string.Equals(storedCode, code))
+            {
+                return Task.FromResult(false);
+            }
+
+            // Remove o código e marca como verificado
+            _cache.Remove(SignupCodeKey(normalizedEmail));
+            _cache.Set(SignupVerifiedKey(normalizedEmail), true, TimeSpan.FromMinutes(30));
+
+            return Task.FromResult(true);
+        }
+
+        public bool IsSignupEmailVerified(string email)
+        {
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+            return _cache.TryGetValue<bool>(SignupVerifiedKey(normalizedEmail), out var verified) && verified;
+        }
     }
 }
