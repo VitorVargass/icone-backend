@@ -17,9 +17,9 @@ namespace icone_backend
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            Console.WriteLine($"ENV: {builder.Environment.EnvironmentName}");
-            Console.WriteLine($"Resend:ApiKey = '{builder.Configuration["Resend:ApiKey"]}'");
-            Console.WriteLine($"Resend:FromEmail = '{builder.Configuration["Resend:FromEmail"]}'");
+            //Console.WriteLine($"ENV: {builder.Environment.EnvironmentName}");
+            //Console.WriteLine($"Resend:ApiKey = '{builder.Configuration["Resend:ApiKey"]}'");
+            //Console.WriteLine($"Resend:FromEmail = '{builder.Configuration["Resend:FromEmail"]}'");
 
 
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
