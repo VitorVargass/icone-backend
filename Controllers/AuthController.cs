@@ -179,23 +179,42 @@ namespace icone_backend.Controllers
                 .FirstOrDefaultAsync(u => u.Email == request.Email);
 
             if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
+            {
                 return Unauthorized(new Error
                 {
                     Code = "INVALID_CREDENTIALS",
                     Message = "E-mail ou senha inválidos.",
                     TraceId = HttpContext.TraceIdentifier
                 });
+            }
+
+            const int TwoFactorValidityDays = 7;
+            var now = DateTimeOffset.UtcNow;
+
+            var requireTwoFactor =
+                !user.LastTwoFactorVerifiedAt.HasValue || // nunca fez 2FA
+                (now - user.LastTwoFactorVerifiedAt.Value).TotalDays >= TwoFactorValidityDays; // passou dos 7 dias
+
+            if (!requireTwoFactor)
+            {
+                var token = _tokenService.GenerateToken(user);
+                return Ok(new
+                {
+                    message = "Login successful!",
+                    requires2FA = false,   
+                    token
+                });
+            }
 
             var twoFactorToken = await _twoFactorService.GenerateAndSendCodeAsync(user.Id, user.Email);
 
             return Ok(new
             {
                 message = "Código de verificação enviado para seu e-mail.",
-                twoFactorRequired = true,
+                requires2FA = true,     
                 twoFactorToken
             });
         }
-
 
         [HttpPost("verify-2fa")]
         public async Task<IActionResult> VerifyTwoFactor([FromBody] VerifyTwoFactorRequest request)
@@ -217,16 +236,23 @@ namespace icone_backend.Controllers
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
         {
-            var user = await _context.Set<UserModel>().FirstOrDefaultAsync(u => u.Email == request.Email);
+
+            var email = request.Email?.Trim().ToLowerInvariant();
+
+            var user = await _context.Set<UserModel>().FirstOrDefaultAsync(u => u.Email == email);
             if (user == null)
-                return NotFound(new Error
+                return Ok(new 
                 {
-                    Code = "USER_NOT_FOUND",
-                    Message = "Usuário não encontrado.",
-                    TraceId = HttpContext.TraceIdentifier
+                    message = "Enviamos um código de verificação para seu e-mail!",
                 });
 
-            return Ok(new { message = "Password reset instructions sent to your email." });
+            var resetToken = await _twoFactorService.GenerateAndSendCodeAsync(user.Id, user.Email);
+
+            return Ok(new
+            {
+                message = "Enviamos um código de verificação para seu e-mail.",
+                resetToken
+            }); 
         }
 
         [HttpGet("me")]

@@ -46,6 +46,9 @@ namespace icone_backend.Models
         [Column("created_at")]
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
+        public DateTimeOffset? LastTwoFactorVerifiedAt { get; set; }
+
+
         // 🔹 Relação com CompaniesModel
         [ForeignKey("CompanyId")]
         public CompaniesModel? Company { get; set; }
