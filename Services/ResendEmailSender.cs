@@ -41,5 +41,31 @@ namespace icone_backend.Services
                 throw new Exception($"Erro ao enviar e-mail via Resend: {response.StatusCode} - {content}");
             }
         }
+
+
+            public async Task SendPasswordResetEmailAsync(string toEmail, string resetLink)
+            {
+            var url = "https://api.resend.com/emails";
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+
+            var body = new
+            {
+                from = _fromEmail,
+                to = new[] { toEmail },
+                subject = "Redefinição de senha - ICone",
+                html = $"<p>Você solicitou redefinição de senha. Clique no link abaixo para criar uma nova senha:</p><p><a href=\"{resetLink}\">{resetLink}</a></p><p>Se você não solicitou, ignore este e-mail.</p>"
+            };
+
+            request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Erro ao enviar e-mail de redefinição via Resend: {response.StatusCode} - {content}");
+            }
+        }
     }
 }

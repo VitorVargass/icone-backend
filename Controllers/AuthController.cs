@@ -6,10 +6,10 @@ using icone_backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using System.IdentityModel.Tokens.Jwt;
 
 namespace icone_backend.Controllers
 {
@@ -236,24 +236,65 @@ namespace icone_backend.Controllers
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
         {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState
+                    .Where(x => x.Value?.Errors.Count > 0)
+                    .Select(x => new
+                    {
+                        Field = x.Key,
+                        Errors = x.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
+                    });
+
+                return BadRequest(new Error
+                {
+                    Code = "VALIDATION_ERROR",
+                    Message = "Existem erros de validação nos campos.",
+                    Details = string.Join(" | ", errors.SelectMany(e => e.Errors)),
+                    TraceId = HttpContext.TraceIdentifier
+                });
+            }
 
             var email = request.Email?.Trim().ToLowerInvariant();
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-            var user = await _context.Set<UserModel>().FirstOrDefaultAsync(u => u.Email == email);
+            // Sempre responder 200, mesmo que e-mail não exista
             if (user == null)
-                return Ok(new 
-                {
-                    message = "Enviamos um código de verificação para seu e-mail!",
-                });
-
-            var resetToken = await _twoFactorService.GenerateAndSendCodeAsync(user.Id, user.Email);
-
-            return Ok(new
             {
-                message = "Enviamos um código de verificação para seu e-mail.",
-                resetToken
-            }); 
+                return Ok(new { message = "Se o e-mail estiver cadastrado, enviamos um link para redefinir sua senha!!" });
+            }
+
+            var resetToken = _twoFactorService.CacheResetToken(user.Id, TimeSpan.FromMinutes(10));
+
+            // Monta o link de redefinição
+            var resetLink = $"https://icone.academy/auth/reset-password?token={resetToken}";
+
+            await _twoFactorService.SendPasswordResetEmailAsync(user.Email, resetLink);
+
+            return Ok(new { message = "Se o e-mail estiver cadastrado, enviamos um link para redefinir sua senha." });
         }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword))
+                return BadRequest(new { message = "Token e nova senha são obrigatórios." });
+
+            if (!_twoFactorService.TryGetResetUserId(request.Token, out var userId))
+                return BadRequest(new { message = "Token inválido ou expirado." });
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+                return NotFound(new { message = "Usuário não encontrado." });
+
+            user.PasswordHash = HashPassword(request.NewPassword);
+            await _context.SaveChangesAsync();
+
+            _twoFactorService.RemoveResetToken(request.Token);
+
+            return Ok(new { message = "Senha redefinida com sucesso!" });
+        }
+
 
         [HttpGet("me")]
         [Authorize]
