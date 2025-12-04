@@ -44,7 +44,8 @@ namespace icone_backend
                         .WithOrigins(
                             "http://localhost:3000",
                             "https://api.icone.academy",
-                            "https://icone.academy" 
+                            "https://icone.academy",
+                            "https://www.icone.academy"
                         )
                         .AllowAnyHeader()
                         .AllowAnyMethod();
