@@ -10,8 +10,9 @@ namespace icone_backend.Data
 
         public DbSet<AdminModel> Admins { get; set; }
         public DbSet<UserModel> Users { get; set; }
-    
         public DbSet<CompaniesModel> Companies { get; set; }
+        public DbSet<IngredientModel> Ingredients { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -23,6 +24,7 @@ namespace icone_backend.Data
             modelBuilder.Entity<AdminModel>().ToTable("admins");
             modelBuilder.Entity<UserModel>().ToTable("users");
             modelBuilder.Entity<CompaniesModel>().ToTable("companies");
+            modelBuilder.Entity<IngredientModel>().ToTable("ingredients");
 
             modelBuilder.Entity<UserModel>(entity =>
             {
@@ -35,6 +37,11 @@ namespace icone_backend.Data
             });
 
             modelBuilder.Entity<CompaniesModel>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+            });
+
+            modelBuilder.Entity<IngredientModel>(entity =>
             {
                 entity.HasKey(e => e.Id);
             });
