@@ -25,6 +25,11 @@ namespace icone_backend.Models
         public string LastName { get; set; } = string.Empty;
 
         [Required]
+        [MaxLength(50)]
+        [Column("plan")]
+        public string Plan { get; set; } = string.Empty;
+
+        [Required]
         [MaxLength(150)]
         [Column("email")]
         public string Email { get; set; } = string.Empty;
@@ -36,7 +41,7 @@ namespace icone_backend.Models
         [Required]
         [MaxLength(30)]
         [Column("role")]
-        public string Role { get; set; } = null!; // Ex: Manager or user
+        public string Role { get; set; } = null!;
 
         [Required]
         [Column("is_active")]

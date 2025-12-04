@@ -38,10 +38,14 @@ namespace icone_backend
             // Cors
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAll", policy =>
+                options.AddPolicy("FrontendPolicy", policy =>
                 {
                     policy
-                        .AllowAnyOrigin()
+                        .WithOrigins(
+                            "http://localhost:3000",
+                            "https://api.icone.academy",
+                            "https://icone.academy" 
+                        )
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 });
@@ -91,7 +95,7 @@ namespace icone_backend
 
             app.UseRouting();
 
-            app.UseCors("AllowAll");
+            app.UseCors("FrontendPolicy");
 
             app.UseAuthentication();
             app.UseAuthorization();

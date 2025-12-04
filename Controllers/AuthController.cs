@@ -68,9 +68,6 @@ namespace icone_backend.Controllers
             {
 
                 var email = request.Email?.Trim().ToLowerInvariant();
-                var documentCompany = request.DocumentCompany?.Trim();
-                var fantasyName = request.FantasyName?.Trim();
-                var corporateName = request.CorporateName?.Trim();
 
                 if (string.IsNullOrEmpty(email) || !_twoFactorService.IsSignupEmailVerified(email))
                 {
@@ -92,59 +89,7 @@ namespace icone_backend.Controllers
                         TraceId = HttpContext.TraceIdentifier
                     });
 
-                if (!string.IsNullOrEmpty(documentCompany) && await _context.Companies.AnyAsync(c => c.DocumentCompany == documentCompany))
-                    return BadRequest(new Error
-                    {
-                        Code = "DUPLICATE_DOCUMENT_COMPANY",
-                        Message = "Documento da empresa já cadastrado.",
-                        Field = "documento_empresa",
-                        TraceId = HttpContext.TraceIdentifier
-                    });
-
-                if (!string.IsNullOrEmpty(fantasyName) && await _context.Companies.AnyAsync(c => c.FantasyName == fantasyName))
-                    return BadRequest(new Error
-                    {
-                        Code = "DUPLICATE_FANTASY_NAME",
-                        Message = "Nome Fantasia já cadastrado.",
-                        Field = "nome_fantasia",
-                        TraceId = HttpContext.TraceIdentifier
-                    });
-
-                if (!string.IsNullOrEmpty(corporateName) && await _context.Companies.AnyAsync(c => c.CorporateName == corporateName))
-                    return BadRequest(new Error
-                    {
-                        Code = "DUPLICATE_CORPORATE_NAME",
-                        Message = "Nome Corporativo já cadastrado.",
-                        Field = "corporate_name",
-                        TraceId = HttpContext.TraceIdentifier
-                    });
-
-                // valida AddressDto (ModelState já cobre, mas garantimos null-safety)
-                var addr = request.Address ?? throw new ArgumentException("Address is required");
-
-                // cria company e user na mesma transação
-                await using var tx = await _context.Database.BeginTransactionAsync();
-
-                var company = new CompaniesModel
-                {
-                    FantasyName = fantasyName ?? string.Empty,
-                    CorporateName = corporateName ?? string.Empty,
-                    DocumentCompany = documentCompany ?? string.Empty,
-                    Phone = request.Phone?.Trim() ?? string.Empty,
-                    Website = request.Website ?? string.Empty,
-                    Plan = "free", // default — ajuste conforme regras do sistema
-                    CountryCode = addr.CountryCode.Trim(),
-                    PostalCode = addr.PostalCode.Trim(),
-                    StateRegion = addr.StateRegion.Trim(),
-                    City = addr.City.Trim(),
-                    Line1 = addr.Line1.Trim(),
-                    Line2 = addr.Line2?.Trim(),
-                    IsActive = true,
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
-
-                _context.Companies.Add(company);
-                await _context.SaveChangesAsync();
+                
 
                 var user = new UserModel
                 {
@@ -153,20 +98,20 @@ namespace icone_backend.Controllers
                     Email = email ?? string.Empty,
                     PasswordHash = HashPassword(request.Password),
                     Role = "admin",
+                    Plan = request.Plan,
                     IsActive = true,
-                    CompanyId = company.Id,
+                    CompanyId = null,
                     CreatedAt = DateTimeOffset.UtcNow
                 };
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                await tx.CommitAsync();
 
                 var token = _tokenService.GenerateToken(user);
                 return Ok(new
                 {
-                    message = "Usuário e empresa criados. Prossiga para próxima etapa.",
+                    message = "Usuário criado. Prossiga para próxima etapa.",
                     token
                 });
 
@@ -244,9 +189,10 @@ namespace icone_backend.Controllers
             const int TwoFactorValidityDays = 7;
             var now = DateTimeOffset.UtcNow;
 
-            var requireTwoFactor =
-                !user.LastTwoFactorVerifiedAt.HasValue || // nunca fez 2FA
-                (now - user.LastTwoFactorVerifiedAt.Value).TotalDays >= TwoFactorValidityDays; // passou dos 7 dias
+            var last2faOrSignup = user.LastTwoFactorVerifiedAt ?? user.CreatedAt;
+
+
+            var requireTwoFactor = (now - last2faOrSignup).TotalDays >= TwoFactorValidityDays; 
 
             if (!requireTwoFactor)
             {

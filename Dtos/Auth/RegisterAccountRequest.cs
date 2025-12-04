@@ -18,6 +18,9 @@ namespace icone_backend.Dtos.Auth
         [EmailAddress(ErrorMessage = "Invalid email format.")]
         public string Email { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "The plan is required.")]
+        public string Plan { get; set; } = "starter";
+
         [Required(ErrorMessage = "The password is required")]
         [Password(MinLength = 8)]
         public string Password { get; set; } = string.Empty;
@@ -26,7 +29,7 @@ namespace icone_backend.Dtos.Auth
         [Compare("Password", ErrorMessage = "The passwords don't match.")]
         public string ConfirmPassword { get; set; } = string.Empty;
 
-     // ------------------------- COMPANY INFO -------------------------
+     /* ------------------------- COMPANY INFO -------------------------
 
         [Required(ErrorMessage = "The company document is required")]
         [Document(AllowDotsAndDashes = false)]
@@ -46,5 +49,6 @@ namespace icone_backend.Dtos.Auth
 
         [Required(ErrorMessage = "Address is required")]
         public AddressDto Address { get; set; } = null!;
+        */
     }
 }
