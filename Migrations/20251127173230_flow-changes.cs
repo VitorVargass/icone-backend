@@ -5,7 +5,7 @@
 namespace icone_backend.Migrations
 {
     /// <inheritdoc />
-    public partial class flowchanges : Migration
+    public partial class Flowchanges : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

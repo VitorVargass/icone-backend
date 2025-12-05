@@ -182,7 +182,23 @@ namespace icone_backend.Migrations
                     b.Property<double>("CholesterolMg")
                         .HasColumnType("double precision");
 
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<double>("FatMonounsaturatedPct")
+                        .HasColumnType("double precision");
+
                     b.Property<double>("FatPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("FatSaturatedPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("FatTransPct")
                         .HasColumnType("double precision");
 
                     b.Property<double>("FiberPct")
@@ -194,9 +210,18 @@ namespace icone_backend.Migrations
                     b.Property<double>("LactosePct")
                         .HasColumnType("double precision");
 
+                    b.Property<double>("MilkSolidsPct")
+                        .HasColumnType("double precision");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<double>("NonFatSolidsPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("OtherSolidsPct")
+                        .HasColumnType("double precision");
 
                     b.Property<double>("Pac")
                         .HasColumnType("double precision");
@@ -209,6 +234,9 @@ namespace icone_backend.Migrations
 
                     b.Property<double>("ProteinPct")
                         .HasColumnType("double precision");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer");
 
                     b.Property<double>("SodiumMg")
                         .HasColumnType("double precision");

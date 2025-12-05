@@ -13,7 +13,7 @@ namespace icone_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20251127120305_onboarding")]
-    partial class onboarding
+    partial class Onboarding
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

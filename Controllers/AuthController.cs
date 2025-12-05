@@ -186,27 +186,12 @@ namespace icone_backend.Controllers
                 });
             }
 
-            const int TwoFactorValidityDays = 7;
             var now = DateTimeOffset.UtcNow;
-
-            var last2faOrSignup = user.LastTwoFactorVerifiedAt ?? user.CreatedAt;
-
-
-            var requireTwoFactor = (now - last2faOrSignup).TotalDays >= TwoFactorValidityDays; 
-
-            if (!requireTwoFactor)
-            {
+            
                 user.LastLoginAt = now;
                 await _context.SaveChangesAsync();
 
                 var token = _tokenService.GenerateToken(user);
-                return Ok(new
-                {
-                    message = "Login successful!",
-                    requires2FA = false,   
-                    token
-                });
-            }
 
             var twoFactorToken = await _twoFactorService.GenerateAndSendCodeAsync(user.Id, user.Email);
 

@@ -13,7 +13,7 @@ namespace icone_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20251127173230_flow-changes")]
-    partial class flowchanges
+    partial class Flowchanges
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

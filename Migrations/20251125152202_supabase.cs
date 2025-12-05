@@ -5,7 +5,7 @@
 namespace icone_backend.Migrations
 {
     /// <inheritdoc />
-    public partial class supabase : Migration
+    public partial class Supabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

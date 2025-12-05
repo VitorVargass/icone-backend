@@ -5,28 +5,27 @@
 namespace icone_backend.Migrations
 {
     /// <inheritdoc />
-    public partial class DeleteOnboarding : Migration
+    public partial class UserIdIngredientes : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "onboarding_step",
+            migrationBuilder.AddColumn<long>(
+                name: "created_by_user_id",
                 schema: "public",
-                table: "users");
+                table: "ingredients",
+                type: "bigint",
+                nullable: false,
+                defaultValue: 0L);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "onboarding_step",
+            migrationBuilder.DropColumn(
+                name: "created_by_user_id",
                 schema: "public",
-                table: "users",
-                type: "character varying(50)",
-                maxLength: 50,
-                nullable: false,
-                defaultValue: "");
+                table: "ingredients");
         }
     }
 }

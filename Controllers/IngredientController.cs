@@ -1,6 +1,7 @@
 ﻿using icone_backend.Dtos.Auth;
 using icone_backend.Dtos.Ingridient;
 using icone_backend.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace icone_backend.Controllers
@@ -8,20 +9,21 @@ namespace icone_backend.Controllers
 
     [ApiController]
     [Route("ingredient")]
+    [Authorize]
     public class IngredientController : ControllerBase
     {
 
-        private readonly IIngredientService _ingredientService;
+        private readonly IIngredientInterface _ingredientService;
 
-        public IngredientController(IIngredientService ingredientService)
+        public IngredientController(IIngredientInterface ingredientService)
         {
             _ingredientService = ingredientService;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAllAsync([FromQuery] Guid companyId)
         {
-            var result = await _ingredientService.GetAllAsync();
+            var result = await _ingredientService.GetAllAsync(companyId);
             return Ok(result);
         }
 

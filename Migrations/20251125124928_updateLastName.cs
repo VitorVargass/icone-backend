@@ -5,7 +5,7 @@
 namespace icone_backend.Migrations
 {
     /// <inheritdoc />
-    public partial class updateLastName : Migration
+    public partial class UpdateLastName : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

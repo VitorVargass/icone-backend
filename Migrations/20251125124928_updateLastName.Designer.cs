@@ -13,7 +13,7 @@ namespace icone_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20251125124928_updateLastName")]
-    partial class updateLastName
+    partial class UpdateLastName
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

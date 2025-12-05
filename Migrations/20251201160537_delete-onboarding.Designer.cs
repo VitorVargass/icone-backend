@@ -13,7 +13,7 @@ namespace icone_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20251201160537_delete-onboarding")]
-    partial class deleteonboarding
+    partial class DeleteOnboarding
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

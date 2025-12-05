@@ -49,11 +49,13 @@ namespace icone_backend.Services
                 return Task.FromResult((false, 0L));
             }
 
+    #pragma warning disable CS8602
             if (!string.Equals(entry.Code, code))
             {
                 // código errado
                 return Task.FromResult((false, 0L));
             }
+    #pragma warning restore CS8602
 
             _cache.Remove(token);
 

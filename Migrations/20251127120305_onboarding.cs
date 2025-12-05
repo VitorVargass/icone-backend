@@ -5,7 +5,7 @@
 namespace icone_backend.Migrations
 {
     /// <inheritdoc />
-    public partial class onboarding : Migration
+    public partial class Onboarding : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

@@ -12,14 +12,15 @@ using icone_backend.Data;
 namespace icone_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251125152202_supabase")]
-    partial class Supabase
+    [Migration("20251205180000_UserIdIngredientes")]
+    partial class UserIdIngredientes
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("public")
                 .HasAnnotation("ProductVersion", "8.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -67,7 +68,7 @@ namespace icone_backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("admins");
+                    b.ToTable("admins", "public");
                 });
 
             modelBuilder.Entity("icone_backend.Models.CompaniesModel", b =>
@@ -79,17 +80,29 @@ namespace icone_backend.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("city");
+
                     b.Property<string>("CorporateName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("corporate_name");
 
+                    b.Property<string>("CountryCode")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)")
+                        .HasColumnName("country_code");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("Document")
+                    b.Property<string>("DocumentCompany")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -105,6 +118,17 @@ namespace icone_backend.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
+                    b.Property<string>("Line1")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("line1");
+
+                    b.Property<string>("Line2")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("line2");
+
                     b.Property<string>("Phone")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -117,15 +141,112 @@ namespace icone_backend.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("plan");
 
+                    b.Property<string>("PostalCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("postal_code");
+
+                    b.Property<string>("StateRegion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("state_region");
+
                     b.Property<string>("Website")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("website");
 
                     b.HasKey("Id");
 
-                    b.ToTable("companies");
+                    b.ToTable("companies", "public");
+                });
+
+            modelBuilder.Entity("icone_backend.Models.IngredientModel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("AlcoholPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("CarbsPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double>("CholesterolMg")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedByUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<double>("FatMonounsaturatedPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("FatPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("FatSaturatedPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("FatTransPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("FiberPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("KcalPer100g")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("LactosePct")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double>("Pac")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Pod")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("PotassiumMg")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("ProteinPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("SodiumMg")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("SugarPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("TotalSolidsPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("WaterPct")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ingredients", "public");
                 });
 
             modelBuilder.Entity("icone_backend.Models.UserModel", b =>
@@ -145,12 +266,6 @@ namespace icone_backend.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("Document")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("document");
-
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -167,16 +282,28 @@ namespace icone_backend.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
+                    b.Property<DateTimeOffset?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
+                    b.Property<DateTimeOffset?>("LastTwoFactorVerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("plan");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -186,7 +313,18 @@ namespace icone_backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("users");
+                    b.HasIndex("CompanyId");
+
+                    b.ToTable("users", "public");
+                });
+
+            modelBuilder.Entity("icone_backend.Models.UserModel", b =>
+                {
+                    b.HasOne("icone_backend.Models.CompaniesModel", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId");
+
+                    b.Navigation("Company");
                 });
 #pragma warning restore 612, 618
         }

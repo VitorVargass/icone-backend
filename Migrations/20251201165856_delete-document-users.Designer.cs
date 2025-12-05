@@ -13,7 +13,7 @@ namespace icone_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20251201165856_delete-document-users")]
-    partial class deletedocumentusers
+    partial class DeletedocumentUsers
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
