@@ -53,9 +53,9 @@ namespace icone_backend.Controllers
             {
                 HttpOnly = true,
                 Secure = true,                 // em produção: somente HTTPS
-                SameSite = SameSiteMode.Lax,   // Lax é suficiente para chamadas same-site (icone + api)
+                SameSite = SameSiteMode.None,   // Lax é suficiente para chamadas same-site (icone + api)
                 Expires = DateTimeOffset.UtcNow.AddDays(7)
-                // Domain = ".icone.academy"    // se quiser compartilhar com outros subdomínios explicitamente
+                Domain = ".icone.academy"   
             };
 
             Response.Cookies.Append(AuthCookieName, jwt, cookieOptions);
