@@ -40,10 +40,11 @@ namespace icone_backend
                             "http://localhost:3000",
                             "https://icone.academy",
                             "https://www.icone.academy",
+                            "https://dashboard.icone.academy"
                         )
                         .AllowAnyHeader()
                         .AllowAnyMethod()
-                        .AllowCredentials(); 
+                        .AllowCredentials(); // <-- importante para cookies
                 });
             });
 
