@@ -52,9 +52,9 @@ namespace icone_backend.Controllers
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,                 // em produção: somente HTTPS
-                SameSite = SameSiteMode.None,   // Lax é suficiente para chamadas same-site (icone + api)
-                Expires = DateTimeOffset.UtcNow.AddDays(7)
+                Secure = true,                 
+                SameSite = SameSiteMode.None,  
+                Expires = DateTimeOffset.UtcNow.AddDays(7),
                 Domain = ".icone.academy"   
             };
 
