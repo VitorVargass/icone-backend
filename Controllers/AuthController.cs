@@ -1,4 +1,4 @@
-﻿using BCrypt.Net;
+using BCrypt.Net;
 using icone_backend.Data;
 using icone_backend.Dtos.Auth;
 using icone_backend.Models;
@@ -8,8 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace icone_backend.Controllers
 {
@@ -22,9 +20,13 @@ namespace icone_backend.Controllers
         private readonly TwoFactorService _twoFactorService;
         private readonly UserService _userService;
 
+        private const string AuthCookieName = "icone_auth";
 
-        public AuthController(AppDbContext context, TokenService tokenService, TwoFactorService twoFactorService,
-    UserService userService)
+        public AuthController(
+            AppDbContext context,
+            TokenService tokenService,
+            TwoFactorService twoFactorService,
+            UserService userService)
         {
             _context = context;
             _tokenService = tokenService;
@@ -40,6 +42,31 @@ namespace icone_backend.Controllers
         private bool VerifyPassword(string password, string hash)
         {
             return BCrypt.Net.BCrypt.Verify(password, hash);
+        }
+
+        /// <summary>
+        /// Seta o cookie HttpOnly com o JWT
+        /// </summary>
+        private void SetAuthCookie(string jwt)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,                 // em produção: somente HTTPS
+                SameSite = SameSiteMode.Lax,   // Lax é suficiente para chamadas same-site (icone + api)
+                Expires = DateTimeOffset.UtcNow.AddDays(7)
+                // Domain = ".icone.academy"    // se quiser compartilhar com outros subdomínios explicitamente
+            };
+
+            Response.Cookies.Append(AuthCookieName, jwt, cookieOptions);
+        }
+
+        /// <summary>
+        /// Remove o cookie de autenticação
+        /// </summary>
+        private void ClearAuthCookie()
+        {
+            Response.Cookies.Delete(AuthCookieName);
         }
 
         [HttpPost("signup")]
@@ -66,7 +93,6 @@ namespace icone_backend.Controllers
 
             try
             {
-
                 var email = request.Email?.Trim().ToLowerInvariant();
 
                 if (string.IsNullOrEmpty(email) || !_twoFactorService.IsSignupEmailVerified(email))
@@ -81,6 +107,7 @@ namespace icone_backend.Controllers
                 }
 
                 if (!string.IsNullOrEmpty(email) && await _context.Users.AnyAsync(u => u.Email == email))
+                {
                     return BadRequest(new Error
                     {
                         Code = "DUPLICATE_EMAIL",
@@ -88,8 +115,7 @@ namespace icone_backend.Controllers
                         Field = "email",
                         TraceId = HttpContext.TraceIdentifier
                     });
-
-                
+                }
 
                 var user = new UserModel
                 {
@@ -107,14 +133,15 @@ namespace icone_backend.Controllers
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-
+                // gera JWT e já seta cookie (usuário logado após signup)
                 var token = _tokenService.GenerateToken(user);
+                SetAuthCookie(token);
+
                 return Ok(new
                 {
                     message = "Usuário criado. Prossiga para próxima etapa.",
-                    token
+                    token // continua mandando no body se você ainda usar no front
                 });
-
             }
             catch (Exception ex)
             {
@@ -124,7 +151,6 @@ namespace icone_backend.Controllers
 
                 return StatusCode(500, new { error = ex.Message });
             }
-            ;
         }
 
         // Request Email and send Code
@@ -138,7 +164,6 @@ namespace icone_backend.Controllers
                 return BadRequest(new { message = "E-mail é obrigatório." });
             }
 
-            // aqui você gera e envia o código de verificação para esse e-mail
             await _twoFactorService.SendSignupEmailCodeAsync(email);
 
             return Ok(new { message = "Enviamos um código de verificação para o seu e-mail." });
@@ -160,7 +185,6 @@ namespace icone_backend.Controllers
 
             if (!valid)
             {
-
                 return Ok(new { valid = false });
             }
 
@@ -187,18 +211,17 @@ namespace icone_backend.Controllers
             }
 
             var now = DateTimeOffset.UtcNow;
-            
-                user.LastLoginAt = now;
-                await _context.SaveChangesAsync();
 
-                var token = _tokenService.GenerateToken(user);
+            user.LastLoginAt = now;
+            await _context.SaveChangesAsync();
 
+            // NÃO gera token definitivo aqui: só depois do 2FA
             var twoFactorToken = await _twoFactorService.GenerateAndSendCodeAsync(user.Id, user.Email);
 
             return Ok(new
             {
                 message = "Código de verificação enviado para seu e-mail.",
-                requires2FA = true,     
+                requires2FA = true,
                 twoFactorToken
             });
         }
@@ -222,9 +245,16 @@ namespace icone_backend.Controllers
             await _context.SaveChangesAsync();
 
             var jwt = _tokenService.GenerateToken(user);
-            return Ok(new { token = jwt });
-        }
 
+            // Aqui é o "login final": seta o cookie
+            SetAuthCookie(jwt);
+
+            return Ok(new
+            {
+                message = "Autenticado com sucesso.",
+                token = jwt // ainda retorna se você quiser compatibilidade
+            });
+        }
 
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
@@ -251,7 +281,6 @@ namespace icone_backend.Controllers
             var email = request.Email?.Trim().ToLowerInvariant();
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-            // Sempre responder 200, mesmo que e-mail não exista
             if (user == null)
             {
                 return Ok(new { message = "Se o e-mail estiver cadastrado, enviamos um link para redefinir sua senha!!" });
@@ -259,7 +288,6 @@ namespace icone_backend.Controllers
 
             var resetToken = _twoFactorService.CacheResetToken(user.Id, TimeSpan.FromMinutes(10));
 
-            // Monta o link de redefinição
             var resetLink = $"https://icone.academy/reset-password?token={resetToken}";
 
             await _twoFactorService.SendPasswordResetEmailAsync(user.Email, resetLink);
@@ -288,12 +316,10 @@ namespace icone_backend.Controllers
             return Ok(new { message = "Senha redefinida com sucesso!" });
         }
 
-
         [HttpGet("me")]
         [Authorize]
         public async Task<IActionResult> GetMe()
         {
-            
             var userIdClaim =
                 User.FindFirstValue(JwtRegisteredClaimNames.Sub) ??
                 User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -322,7 +348,6 @@ namespace icone_backend.Controllers
                 });
             }
 
-            
             return Ok(new
             {
                 id = user.Id,
@@ -332,7 +357,7 @@ namespace icone_backend.Controllers
                 role = user.Role,
                 companyId = user.CompanyId,
                 isActive = user.IsActive,
-                company =  user.Company == null ? null : new
+                company = user.Company == null ? null : new
                 {
                     id = user.Company.Id,
                     fantasyName = user.Company.FantasyName,
@@ -341,6 +366,13 @@ namespace icone_backend.Controllers
                     isActive = user.Company.IsActive
                 }
             });
+        }
+
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            ClearAuthCookie();
+            return NoContent();
         }
     }
 }
