@@ -6,9 +6,7 @@ using icone_backend.Services.Ingredient;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using System.Text;
 
 namespace icone_backend
@@ -19,18 +17,10 @@ namespace icone_backend
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            //Console.WriteLine($"ENV: {builder.Environment.EnvironmentName}");
-            //Console.WriteLine($"Resend:ApiKey = '{builder.Configuration["Resend:ApiKey"]}'");
-            //Console.WriteLine($"Resend:FromEmail = '{builder.Configuration["Resend:FromEmail"]}'");
-
-
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-
-            builder.Services.AddDbContext<AppDbContext>(options => 
-            options.UseNpgsql(connectionString));
-
-            
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseNpgsql(connectionString));
 
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
@@ -40,10 +30,7 @@ namespace icone_backend
             builder.Services.AddScoped<IIngredientSolidsCalculator, IngredientSolidsCalculator>();
             builder.Services.AddHttpContextAccessor();
 
-
-
-
-            // Cors
+            // CORS
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("FrontendPolicy", policy =>
@@ -51,12 +38,12 @@ namespace icone_backend
                     policy
                         .WithOrigins(
                             "http://localhost:3000",
-                            "https://api.icone.academy",
                             "https://icone.academy",
-                            "https://www.icone.academy"
+                            "https://www.icone.academy",
                         )
                         .AllowAnyHeader()
-                        .AllowAnyMethod();
+                        .AllowAnyMethod()
+                        .AllowCredentials(); 
                 });
             });
 
@@ -64,26 +51,43 @@ namespace icone_backend
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
             builder.Services
-        .AddAuthentication(options =>
-        {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-        })
-        .AddJwtBearer(options =>
-            {
-        options.RequireHttpsMetadata = false; 
-        options.SaveToken = true;
-        options.TokenValidationParameters = new TokenValidationParameters
-            {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings["Issuer"],
-            ValidAudience = jwtSettings["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(key)
-            };
-        });
+                .AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddJwtBearer(options =>
+                {
+                    options.RequireHttpsMetadata = false; // em produção você pode pôr true
+                    options.SaveToken = true;
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = jwtSettings["Issuer"],
+                        ValidAudience = jwtSettings["Audience"],
+                        IssuerSigningKey = new SymmetricSecurityKey(key)
+                    };
+
+                    // Lê o token do cookie "icone_auth" se não vier no header Authorization
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnMessageReceived = context =>
+                        {
+                            if (string.IsNullOrEmpty(context.Token))
+                            {
+                                if (context.Request.Cookies.TryGetValue("icone_auth", out var cookieToken))
+                                {
+                                    context.Token = cookieToken;
+                                }
+                            }
+
+                            return Task.CompletedTask;
+                        }
+                    };
+                });
 
             builder.Services.AddScoped<TokenService>();
             builder.Services.AddMemoryCache();
@@ -92,7 +96,6 @@ namespace icone_backend
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
