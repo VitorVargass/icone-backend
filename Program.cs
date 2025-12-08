@@ -1,4 +1,5 @@
 using icone_backend.Data;
+using icone_backend.Interface;
 using icone_backend.Interfaces;
 using icone_backend.Middleware;
 using icone_backend.Services;
@@ -25,6 +26,7 @@ namespace icone_backend
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+            builder.Services.AddScoped<IAuthInterface, AuthService>();
             builder.Services.AddHttpClient<IEmailSender, ResendEmailSender>();
             builder.Services.AddScoped<IIngredientInterface, IngredientService>();
             builder.Services.AddScoped<IIngredientSolidsCalculator, IngredientSolidsCalculator>();
@@ -44,7 +46,7 @@ namespace icone_backend
                         )
                         .AllowAnyHeader()
                         .AllowAnyMethod()
-                        .AllowCredentials(); // <-- importante para cookies
+                        .AllowCredentials();
                 });
             });
 
@@ -72,7 +74,7 @@ namespace icone_backend
                         IssuerSigningKey = new SymmetricSecurityKey(key)
                     };
 
-                    // Lê o token do cookie "icone_auth" se não vier no header Authorization
+                    
                     options.Events = new JwtBearerEvents
                     {
                         OnMessageReceived = context =>

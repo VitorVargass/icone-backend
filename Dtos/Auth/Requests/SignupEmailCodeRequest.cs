@@ -1,7 +1,7 @@
 ﻿using icone_backend.Models;
 using System.ComponentModel.DataAnnotations;
 
-namespace icone_backend.Dtos.Auth
+namespace icone_backend.Dtos.Auth.Requests
 {
     public class SignupEmailCodeRequest
     {

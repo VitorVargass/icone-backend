@@ -1,11 +1,10 @@
-using BCrypt.Net;
-using icone_backend.Data;
 using icone_backend.Dtos.Auth;
+using icone_backend.Dtos.Auth.Requests;
+using icone_backend.Interface;
 using icone_backend.Models;
 using icone_backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -15,62 +14,42 @@ namespace icone_backend.Controllers
     [Route("auth")]
     public class AuthController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly TokenService _tokenService;
-        private readonly TwoFactorService _twoFactorService;
-        private readonly UserService _userService;
+        private readonly IAuthInterface _authService;
 
         private const string AuthCookieName = "icone_auth";
 
-        public AuthController(
-            AppDbContext context,
-            TokenService tokenService,
-            TwoFactorService twoFactorService,
-            UserService userService)
+        public AuthController(IAuthInterface authService)
         {
-            _context = context;
-            _tokenService = tokenService;
-            _twoFactorService = twoFactorService;
-            _userService = userService;
+            _authService = authService;
         }
 
-        private string HashPassword(string password)
-        {
-            return BCrypt.Net.BCrypt.HashPassword(password, workFactor: 10);
-        }
-
-        private bool VerifyPassword(string password, string hash)
-        {
-            return BCrypt.Net.BCrypt.Verify(password, hash);
-        }
-
-        /// <summary>
-        /// Seta o cookie HttpOnly com o JWT
-        /// </summary>
+        // --------------------------------------------------------------------
+        // Helpers de Cookie
+        // --------------------------------------------------------------------
         private void SetAuthCookie(string jwt)
         {
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,                 
-                SameSite = SameSiteMode.None,  
+                Secure = true,
+                SameSite = SameSiteMode.None,
                 Expires = DateTimeOffset.UtcNow.AddDays(7),
-                Domain = ".icone.academy"   
+                Domain = ".icone.academy"
             };
 
             Response.Cookies.Append(AuthCookieName, jwt, cookieOptions);
         }
 
-        /// <summary>
-        /// Remove o cookie de autenticação
-        /// </summary>
         private void ClearAuthCookie()
         {
             Response.Cookies.Delete(AuthCookieName);
         }
 
+        // --------------------------------------------------------------------
+        // SIGNUP
+        // --------------------------------------------------------------------
         [HttpPost("signup")]
-        public async Task<IActionResult> Register(RegisterAccount request)
+        public async Task<IActionResult> Register([FromBody] RegisterAccountRequest request)
         {
             if (!ModelState.IsValid)
             {
@@ -91,71 +70,46 @@ namespace icone_backend.Controllers
                 });
             }
 
-            try
+            var result = await _authService.RegisterAsync(request);
+
+            if (!result.Success)
             {
-                var email = request.Email?.Trim().ToLowerInvariant();
-
-                if (string.IsNullOrEmpty(email) || !_twoFactorService.IsSignupEmailVerified(email))
+                var err = result.Error ?? new Error
                 {
-                    return BadRequest(new Error
-                    {
-                        Code = "EMAIL_NOT_VERIFIED",
-                        Message = "Você precisa verificar o e-mail antes de continuar.",
-                        Field = "email",
-                        TraceId = HttpContext.TraceIdentifier
-                    });
-                }
-
-                if (!string.IsNullOrEmpty(email) && await _context.Users.AnyAsync(u => u.Email == email))
-                {
-                    return BadRequest(new Error
-                    {
-                        Code = "DUPLICATE_EMAIL",
-                        Message = "E-mail já cadastrado.",
-                        Field = "email",
-                        TraceId = HttpContext.TraceIdentifier
-                    });
-                }
-
-                var user = new UserModel
-                {
-                    FirstName = request.FirstName,
-                    LastName = request.LastName,
-                    Email = email ?? string.Empty,
-                    PasswordHash = HashPassword(request.Password),
-                    Role = "admin",
-                    Plan = request.Plan,
-                    IsActive = true,
-                    CompanyId = null,
-                    CreatedAt = DateTimeOffset.UtcNow
+                    Code = "UNKNOWN_ERROR",
+                    Message = "Erro ao criar usuário.",
+                    TraceId = HttpContext.TraceIdentifier
                 };
 
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
-
-                // gera JWT e já seta cookie (usuário logado após signup)
-                var token = _tokenService.GenerateToken(user);
-                SetAuthCookie(token);
-
-                return Ok(new
+                // Mapeamento simples por código de erro
+                return err.Code switch
                 {
-                    message = "Usuário criado. Prossiga para próxima etapa.",
-                    token // continua mandando no body se você ainda usar no front
-                });
+                    "EMAIL_NOT_VERIFIED" => BadRequest(err),
+                    "DUPLICATE_EMAIL" => BadRequest(err),
+                    "VALIDATION_ERROR" => BadRequest(err),
+                    _ => StatusCode(500, err)
+                };
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine("ERRO EM RegisterUser:");
-                Console.WriteLine(ex.Message);
-                Console.WriteLine(ex.StackTrace);
 
-                return StatusCode(500, new { error = ex.Message });
+            if (!string.IsNullOrEmpty(result.Token))
+            {
+                SetAuthCookie(result.Token);
             }
+
+            return Ok(new
+            {
+                message = "Usuário criado. Prossiga para próxima etapa.",
+                token = result.Token
+            });
         }
 
-        // Request Email and send Code
+        // --------------------------------------------------------------------
+        // SIGNUP - EMAIL CODE (pode ficar fora do serviço por enquanto)
+        // --------------------------------------------------------------------
         [HttpPost("signup/email-code")]
-        public async Task<IActionResult> SendSignupEmailCode([FromBody] SignupEmailCodeRequest request)
+        public async Task<IActionResult> SendSignupEmailCode(
+            [FromServices] TwoFactorService twoFactorService,
+            [FromBody] SignupEmailCodeRequest request)
         {
             var email = request.Email?.Trim().ToLowerInvariant();
 
@@ -164,14 +118,15 @@ namespace icone_backend.Controllers
                 return BadRequest(new { message = "E-mail é obrigatório." });
             }
 
-            await _twoFactorService.SendSignupEmailCodeAsync(email);
+            await twoFactorService.SendSignupEmailCodeAsync(email);
 
             return Ok(new { message = "Enviamos um código de verificação para o seu e-mail." });
         }
 
-        // Verify Email Signup
         [HttpPost("signup/email-code/verify")]
-        public async Task<IActionResult> VerifySignupEmailCode([FromBody] VerifySignupEmailCodeRequest request)
+        public async Task<IActionResult> VerifySignupEmailCode(
+            [FromServices] TwoFactorService twoFactorService,
+            [FromBody] VerifySignupEmailCodeRequest request)
         {
             var email = request.Email?.Trim().ToLowerInvariant();
             var code = request.Code?.Trim();
@@ -181,7 +136,7 @@ namespace icone_backend.Controllers
                 return BadRequest(new { message = "E-mail e código são obrigatórios.", valid = false });
             }
 
-            var valid = await _twoFactorService.VerifySignupEmailCodeAsync(email, code);
+            var valid = await twoFactorService.VerifySignupEmailCodeAsync(email, code);
 
             if (!valid)
             {
@@ -191,73 +146,68 @@ namespace icone_backend.Controllers
             return Ok(new { valid = true });
         }
 
-        // --------------------------------------------------------------------------
+        // --------------------------------------------------------------------
+        // LOGIN (1ª etapa: senha -> manda código 2FA)
+        // --------------------------------------------------------------------
         [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var email = request.Email?.Trim().ToLowerInvariant();
+            var result = await _authService.LoginAsync(request);
 
-            var user = await _context.Set<UserModel>()
-                .FirstOrDefaultAsync(u => u.Email == email);
-
-            if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
+            if (!result.Success)
             {
-                return Unauthorized(new Error
+                var err = result.Error ?? new Error
                 {
                     Code = "INVALID_CREDENTIALS",
                     Message = "E-mail ou senha inválidos.",
                     TraceId = HttpContext.TraceIdentifier
-                });
+                };
+
+                return Unauthorized(err);
             }
-
-            var now = DateTimeOffset.UtcNow;
-
-            user.LastLoginAt = now;
-            await _context.SaveChangesAsync();
-
-            // NÃO gera token definitivo aqui: só depois do 2FA
-            var twoFactorToken = await _twoFactorService.GenerateAndSendCodeAsync(user.Id, user.Email);
 
             return Ok(new
             {
                 message = "Código de verificação enviado para seu e-mail.",
-                requires2FA = true,
-                twoFactorToken
+                requires2FA = result.Requires2FA,
+                twoFactorToken = result.TwoFactorToken
             });
         }
 
+        // --------------------------------------------------------------------
+        // VERIFY 2FA (2ª etapa: código -> gera JWT final)
+        // --------------------------------------------------------------------
         [HttpPost("verify-2fa")]
         public async Task<IActionResult> VerifyTwoFactor([FromBody] VerifyTwoFactorRequest request)
         {
-            var result = await _twoFactorService.ValidateCodeAsync(request.TwoFactorToken, request.Code);
-            if (!result.Success)
+            var result = await _authService.VerifyTwoFactorAsync(request);
+
+            if (!result.Success || string.IsNullOrEmpty(result.Jwt))
             {
-                return BadRequest(new { code = "INVALID_2FA_CODE" });
+                var err = result.Error ?? new Error
+                {
+                    Code = "INVALID_2FA_CODE",
+                    Message = "Código de verificação inválido.",
+                    TraceId = HttpContext.TraceIdentifier
+                };
+
+                return BadRequest(err);
             }
 
-            var user = await _userService.FindByIdAsync(result.UserId);
-            if (user == null) return Unauthorized();
-
-            var now = DateTimeOffset.UtcNow;
-
-            user.LastTwoFactorVerifiedAt = now;
-            user.LastLoginAt = now;
-            await _context.SaveChangesAsync();
-
-            var jwt = _tokenService.GenerateToken(user);
-
-            // Aqui é o "login final": seta o cookie
-            SetAuthCookie(jwt);
+            SetAuthCookie(result.Jwt);
 
             return Ok(new
             {
                 message = "Autenticado com sucesso.",
-                token = jwt // ainda retorna se você quiser compatibilidade
+                token = result.Jwt
             });
         }
 
+        // --------------------------------------------------------------------
+        // FORGOT PASSWORD
+        // --------------------------------------------------------------------
         [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
             if (!ModelState.IsValid)
             {
@@ -278,44 +228,56 @@ namespace icone_backend.Controllers
                 });
             }
 
-            var email = request.Email?.Trim().ToLowerInvariant();
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            var result = await _authService.ForgotPasswordAsync(request);
 
-            if (user == null)
+            if (!result.Success)
             {
-                return Ok(new { message = "Se o e-mail estiver cadastrado, enviamos um link para redefinir sua senha!!" });
+                return StatusCode(500, new Error
+                {
+                    Code = "INTERNAL_ERROR",
+                    Message = "Erro ao processar solicitação de redefinição de senha.",
+                    TraceId = HttpContext.TraceIdentifier
+                });
             }
 
-            var resetToken = _twoFactorService.CacheResetToken(user.Id, TimeSpan.FromMinutes(10));
-
-            var resetLink = $"https://icone.academy/reset-password?token={resetToken}";
-
-            await _twoFactorService.SendPasswordResetEmailAsync(user.Email, resetLink);
-
-            return Ok(new { message = "Se o e-mail estiver cadastrado, enviamos um link para redefinir sua senha." });
+            return Ok(new
+            {
+                message = "Se o e-mail estiver cadastrado, enviamos um link para redefinir sua senha."
+            });
         }
 
+        // --------------------------------------------------------------------
+        // RESET PASSWORD
+        // --------------------------------------------------------------------
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword))
-                return BadRequest(new { message = "Token e nova senha são obrigatórios." });
+            var result = await _authService.ResetPasswordAsync(request);
 
-            if (!_twoFactorService.TryGetResetUserId(request.Token, out var userId))
-                return BadRequest(new { message = "Token inválido ou expirado." });
+            if (!result.Success)
+            {
+                var err = result.Error ?? new Error
+                {
+                    Code = "INVALID_RESET_TOKEN",
+                    Message = "Token inválido ou expirado.",
+                    TraceId = HttpContext.TraceIdentifier
+                };
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null)
-                return NotFound(new { message = "Usuário não encontrado." });
-
-            user.PasswordHash = HashPassword(request.NewPassword);
-            await _context.SaveChangesAsync();
-
-            _twoFactorService.RemoveResetToken(request.Token);
+                return err.Code switch
+                {
+                    "USER_NOT_FOUND" => NotFound(err),
+                    "INVALID_RESET_TOKEN" => BadRequest(err),
+                    "VALIDATION_ERROR" => BadRequest(err),
+                    _ => StatusCode(500, err)
+                };
+            }
 
             return Ok(new { message = "Senha redefinida com sucesso!" });
         }
 
+        // --------------------------------------------------------------------
+        // ME
+        // --------------------------------------------------------------------
         [HttpGet("me")]
         [Authorize]
         public async Task<IActionResult> GetMe()
@@ -334,11 +296,9 @@ namespace icone_backend.Controllers
                 });
             }
 
-            var user = await _context.Users
-                .Include(u => u.Company)
-                .FirstOrDefaultAsync(u => u.Id == userId);
+            var me = await _authService.GetMeAsync(userId);
 
-            if (user == null)
+            if (me == null)
             {
                 return NotFound(new Error
                 {
@@ -350,24 +310,27 @@ namespace icone_backend.Controllers
 
             return Ok(new
             {
-                id = user.Id,
-                firstName = user.FirstName,
-                lastName = user.LastName,
-                email = user.Email,
-                role = user.Role,
-                companyId = user.CompanyId,
-                isActive = user.IsActive,
-                company = user.Company == null ? null : new
+                id = me.Id,
+                firstName = me.FirstName,
+                lastName = me.LastName,
+                email = me.Email,
+                role = me.Role,
+                companyId = me.CompanyId,
+                isActive = me.IsActive,
+                company = me.Company == null ? null : new
                 {
-                    id = user.Company.Id,
-                    fantasyName = user.Company.FantasyName,
-                    corporateName = user.Company.CorporateName,
-                    plan = user.Company.Plan,
-                    isActive = user.Company.IsActive
+                    id = me.Company.Id,
+                    fantasyName = me.Company.FantasyName,
+                    corporateName = me.Company.CorporateName,
+                    plan = me.Company.Plan,
+                    isActive = me.Company.IsActive
                 }
             });
         }
 
+        // --------------------------------------------------------------------
+        // LOGOUT
+        // --------------------------------------------------------------------
         [HttpPost("logout")]
         public IActionResult Logout()
         {

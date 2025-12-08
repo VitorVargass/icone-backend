@@ -1,4 +1,4 @@
-﻿using icone_backend.Dtos.Ingridient;
+﻿using icone_backend.Dtos.Ingredient.Requests;
 using System;
 using System.Globalization;
 

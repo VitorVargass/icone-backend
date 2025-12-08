@@ -1,12 +1,12 @@
 ﻿using icone_backend.Data;
-using icone_backend.Dtos.Ingredient;
-using icone_backend.Dtos.Ingridient;
 using icone_backend.Interfaces;
 using icone_backend.Models;
 using icone_backend.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
+using icone_backend.Dtos.Ingredient.Requests;
+using icone_backend.Dtos.Ingredient.Responses;
 
 namespace icone_backend.Services.Ingredient
 {
@@ -45,14 +45,24 @@ namespace icone_backend.Services.Ingredient
             return userId;
         }
 
-        public async Task<IEnumerable<IngredientResponse>> GetAllAsync(Guid companyId)
+        public async Task<IEnumerable<IngredientResponse>> GetAllAsync(Guid? companyId)
         {
             var userId = GetCurrentUserId();
 
-            return await _context.Ingredients
-                .Where(i => 
-                i.Scope == IngredientScope.System ||
-                (i.Scope == IngredientScope.Company && i.CompanyId == companyId))
+            var query = _context.Ingredients.AsQueryable();
+
+            query = query.Where(i =>
+                i.Scope == IngredientScope.System || // globais
+                (i.Scope == IngredientScope.Company
+                    && companyId.HasValue
+                    && i.CompanyId == companyId)      // da empresa ativa
+                ||
+                (i.Scope == IngredientScope.User
+                    && !companyId.HasValue
+                    && i.CreatedByUserId == userId)   // pessoais do autônomo
+            );
+
+            return await query
                 .Select(i => new IngredientResponse
                 {
                     Id = i.Id,
@@ -60,7 +70,7 @@ namespace icone_backend.Services.Ingredient
                     CompanyId = i.CompanyId,
                     Name = i.Name,
                     Category = i.Category,
-                    CreatedByUserId = userId,
+                    CreatedByUserId = i.CreatedByUserId,
 
                     WaterPct = i.WaterPct,
                     ProteinPct  = i.ProteinPct,
@@ -107,7 +117,7 @@ namespace icone_backend.Services.Ingredient
                 CompanyId = i.CompanyId,
                 Name = i.Name,
                 Category = i.Category,
-                CreatedByUserId = userId,
+                CreatedByUserId = i.CreatedByUserId,
 
                 WaterPct = i.WaterPct,
                 ProteinPct = i.ProteinPct,
@@ -137,7 +147,7 @@ namespace icone_backend.Services.Ingredient
             };
         }
 
-        public async Task<IngredientResponse> CreateAsync(CreateIngredientRequest request)
+        public async Task<IngredientResponse> CreateAsync(CreateIngredientRequest request, Guid? companyId)
         {
             var userId = GetCurrentUserId();
 
@@ -171,8 +181,23 @@ namespace icone_backend.Services.Ingredient
                 CholesterolMg = request.CholesterolMg,
 
 
-                //TotalSolidsPct = request.TotalSolidsPct,
+                TotalSolidsPct = request.TotalSolidsPct,
+                NonFatSolidsPct = request.NonFatSolidsPct,
+                MilkSolidsPct = request.MilkSolidsPct,
+                OtherSolidsPct = request.OtherSolidsPct
+
             };
+
+            if (companyId.HasValue)
+            {
+                ingredient.Scope = IngredientScope.Company;
+                ingredient.CompanyId = companyId;
+            }
+            else
+            {
+                ingredient.Scope = IngredientScope.User;
+                ingredient.CompanyId = null;
+            }
 
             _context.Ingredients.Add(ingredient);
             await _context.SaveChangesAsync();
@@ -182,7 +207,8 @@ namespace icone_backend.Services.Ingredient
                 Id = ingredient.Id,
                 Name = ingredient.Name,
                 Category = ingredient.Category,
-                CreatedByUserId = userId,
+                CreatedByUserId = ingredient.CreatedByUserId,
+                Scope = ingredient.Scope,
 
                 WaterPct = ingredient.WaterPct,
                 ProteinPct = ingredient.ProteinPct,
@@ -204,10 +230,10 @@ namespace icone_backend.Services.Ingredient
                 CholesterolMg = ingredient.CholesterolMg,
 
 
-                TotalSolidsPct = request.TotalSolidsPct,
-                NonFatSolidsPct = request.NonFatSolidsPct,
-                MilkSolidsPct = request.MilkSolidsPct,
-                OtherSolidsPct = request.OtherSolidsPct
+                TotalSolidsPct = ingredient.TotalSolidsPct,
+                NonFatSolidsPct = ingredient.NonFatSolidsPct,
+                MilkSolidsPct = ingredient.MilkSolidsPct,
+                OtherSolidsPct = ingredient.OtherSolidsPct
 
             };
         }
@@ -245,7 +271,12 @@ namespace icone_backend.Services.Ingredient
             ingredient.PotassiumMg = request.PotassiumMg;
             ingredient.CholesterolMg = request.CholesterolMg;
 
-            
+            ingredient.TotalSolidsPct = request.TotalSolidsPct;
+            ingredient.NonFatSolidsPct = request.NonFatSolidsPct;
+            ingredient.MilkSolidsPct = request.MilkSolidsPct;
+            ingredient.OtherSolidsPct = request.OtherSolidsPct;
+
+
             await _context.SaveChangesAsync();
 
             return new IngredientResponse
@@ -253,7 +284,7 @@ namespace icone_backend.Services.Ingredient
                 Id = ingredient.Id,
                 Name = ingredient.Name,
                 Category = ingredient.Category,
-                CreatedByUserId = userId,
+                CreatedByUserId = ingredient.CreatedByUserId,
 
                 WaterPct = ingredient.WaterPct,
                 ProteinPct = ingredient.ProteinPct,
@@ -275,10 +306,10 @@ namespace icone_backend.Services.Ingredient
                 CholesterolMg = ingredient.CholesterolMg,
 
 
-                TotalSolidsPct = request.TotalSolidsPct,
-                NonFatSolidsPct = request.NonFatSolidsPct,
-                MilkSolidsPct = request.MilkSolidsPct,
-                OtherSolidsPct = request.OtherSolidsPct
+                TotalSolidsPct = ingredient.TotalSolidsPct,
+                NonFatSolidsPct = ingredient.NonFatSolidsPct,
+                MilkSolidsPct = ingredient.MilkSolidsPct,
+                OtherSolidsPct = ingredient.OtherSolidsPct
 
             };
         }

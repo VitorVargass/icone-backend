@@ -1,4 +1,4 @@
-﻿namespace icone_backend.Dtos.Auth
+﻿namespace icone_backend.Dtos.Auth.Requests
 {
     public class ForgotPasswordRequest
     {

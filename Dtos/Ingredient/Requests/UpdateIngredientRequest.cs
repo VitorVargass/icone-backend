@@ -1,4 +1,4 @@
-﻿namespace icone_backend.Dtos.Ingridient
+﻿namespace icone_backend.Dtos.Ingredient.Requests
 {
     public class UpdateIngredientRequest : CreateIngredientRequest
     {

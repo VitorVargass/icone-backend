@@ -1,6 +1,6 @@
 ﻿using icone_backend.Models;
 
-namespace icone_backend.Dtos.Ingredient
+namespace icone_backend.Dtos.Ingredient.Responses
 {
     public class IngredientResponse
     {

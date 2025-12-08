@@ -1,5 +1,5 @@
 ﻿using icone_backend.Dtos.Auth;
-using icone_backend.Dtos.Ingridient;
+using icone_backend.Dtos.Ingredient.Requests;
 using icone_backend.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +21,7 @@ namespace icone_backend.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync([FromQuery] Guid companyId)
+        public async Task<IActionResult> GetAllAsync([FromQuery] Guid? companyId)
         {
             var result = await _ingredientService.GetAllAsync(companyId);
             return Ok(result);
@@ -36,9 +36,9 @@ namespace icone_backend.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateIngredientRequest request)
+        public async Task<IActionResult> Create([FromBody] CreateIngredientRequest request, [FromQuery] Guid? companyId)
         {
-            var created = await _ingredientService.CreateAsync(request);
+            var created = await _ingredientService.CreateAsync(request,companyId);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 

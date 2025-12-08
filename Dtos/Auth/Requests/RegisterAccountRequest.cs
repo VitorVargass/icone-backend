@@ -2,9 +2,9 @@
 using icone_backend.Dtos.Address;
 using System.ComponentModel.DataAnnotations;
 
-namespace icone_backend.Dtos.Auth
+namespace icone_backend.Dtos.Auth.Requests
 {
-    public class RegisterAccount
+    public class RegisterAccountRequest
     {
      // ------------------------- USER INFO -------------------------
 
@@ -29,26 +29,5 @@ namespace icone_backend.Dtos.Auth
         [Compare("Password", ErrorMessage = "The passwords don't match.")]
         public string ConfirmPassword { get; set; } = string.Empty;
 
-     /* ------------------------- COMPANY INFO -------------------------
-
-        [Required(ErrorMessage = "The company document is required")]
-        [Document(AllowDotsAndDashes = false)]
-        public string DocumentCompany { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "The fantasy name is required")]
-        public string FantasyName { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "The corporate name is required.")]
-        public string CorporateName { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "The phone is required")]
-        [Phone(ErrorMessage = "Invalid phone")]
-        public string Phone { get; set; } = string.Empty;
-
-        public string? Website { get; set; }
-
-        [Required(ErrorMessage = "Address is required")]
-        public AddressDto Address { get; set; } = null!;
-        */
     }
 }

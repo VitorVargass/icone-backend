@@ -7,7 +7,8 @@ namespace icone_backend.Models
     public enum IngredientScope
     {
         System = 0,
-        Company = 1
+        Company = 1,
+        User = 2
     }
     public class IngredientModel
     {
