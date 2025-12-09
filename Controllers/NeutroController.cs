@@ -1,4 +1,5 @@
 ﻿// Controllers/NeutralsController.cs
+using icone_backend.Dtos.Additives.Requests;
 using icone_backend.Dtos.Neutral.Requests;
 using icone_backend.Dtos.Neutral.Responses;
 using icone_backend.Interface;
@@ -59,6 +60,45 @@ namespace icone_backend.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
+       
+        [HttpPut("{id:int}")]
+        public async Task<ActionResult<NeutralResponse>> Update(
+            int id,
+            [FromBody] CreateNeutralRequest request,
+            CancellationToken ct)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new { message = "Invalid neutral payload" });
+
+            var updated = await _neutralService.UpdateAsync(id, request, ct);
+            if (updated == null)
+                return NotFound(new { message = "Neutral not found" });
+
+            return Ok(updated);
+        }
+
         
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(
+            int id,
+            CancellationToken ct)
+        {
+            var deleted = await _neutralService.DeleteAsync(id, ct);
+            if (!deleted)
+                return NotFound(new { message = "Neutral not found" });
+
+            return NoContent();
+        }
+
+        [HttpPost("analyze-draft")]
+        public async Task<ActionResult<AdditiveScoresDto>> AnalyzeDraft([FromBody] CreateNeutralRequest request, CancellationToken ct)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new { message = "Invalid neutral payload" });
+
+            var scores = await _neutralService.AnalyzeDraftAsync(request, ct);
+
+            return Ok(scores);
+        }
     }
 }

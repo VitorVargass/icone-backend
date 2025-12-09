@@ -1,4 +1,6 @@
-﻿namespace icone_backend.Dtos.Neutral.Responses
+﻿using icone_backend.Models;
+
+namespace icone_backend.Dtos.Neutral.Responses
 {
     public class NeutralComponentDto
     {
@@ -16,7 +18,7 @@
     public class NeutralResponse
     {
         public int Id { get; set; }
-
+        public NeutralScope Scope { get; set; }
         public string Name { get; set; } = null!;
         public string GelatoType { get; set; } = string.Empty;
         public string Method { get; set; } = string.Empty;

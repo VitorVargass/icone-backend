@@ -1,4 +1,5 @@
 ﻿using icone_backend.Data;
+using icone_backend.Dtos.Additives.Requests;
 using icone_backend.Dtos.Neutral;
 using icone_backend.Dtos.Neutral.Requests;
 using icone_backend.Dtos.Neutral.Responses;
@@ -42,26 +43,26 @@ namespace icone_backend.Services.NeutralService
         {
             var userId = GetCurrentUserId();
 
-            // carrega todos neutros
+           
             var neutrals = await _context.Neutrals
                 .AsNoTracking()
                 .ToListAsync(ct);
 
-            // 🔹 aplica a MESMA lógica de escopo de Ingredient/Additive
+            
             neutrals = neutrals
                 .Where(n =>
-                    n.Scope == NeutralScope.System || // globais
+                    n.Scope == NeutralScope.System || 
                     (n.Scope == NeutralScope.Company
                         && companyId.HasValue
-                        && n.CompanyId == companyId)     // da empresa ativa
+                        && n.CompanyId == companyId)     
                     ||
                     (n.Scope == NeutralScope.User
                         && !companyId.HasValue
-                        && n.CreatedByUserId == userId)  // pessoais do autônomo
+                        && n.CreatedByUserId == userId)  
                 )
                 .ToList();
 
-            // resolve todos AdditiveIds usados
+            
             var allItems = neutrals
                 .SelectMany(n => n.GetComponents())
                 .ToList();
@@ -166,6 +167,120 @@ namespace icone_backend.Services.NeutralService
             return MapToResponse(neutral, resolvedComponents, messages);
         }
 
+        public async Task<NeutralResponse?> UpdateAsync(int id, CreateNeutralRequest request, CancellationToken ct)
+        {
+            var neutral = await _context.Neutrals
+                .FirstOrDefaultAsync(n => n.Id == id, ct);
+
+            if (neutral == null)
+                return null;
+
+            // Reaproveita a mesma lógica de montar entidade e componentes
+            var additiveIds = request.Components
+                .Select(c => c.AdditiveId)
+                .Distinct()
+                .ToList();
+
+            var additives = await _context.Additives
+                .Where(a => additiveIds.Contains(a.Id))
+                .ToListAsync(ct);
+
+            if (additives.Count != additiveIds.Count)
+            {
+                throw new InvalidOperationException("One or more additives not found.");
+            }
+
+            neutral.Name = request.Name;
+            neutral.GelatoType = request.GelatoType;
+            neutral.Method = request.Method;
+            neutral.RecommendedDoseGPerKg = request.RecommendedDoseGPerKg;
+            neutral.UpdatedAt = DateTime.UtcNow;
+
+            var resolvedComponents = new List<NeutralComponentResolved>();
+            var jsonItems = new List<NeutralComponentItem>();
+
+            foreach (var c in request.Components)
+            {
+                var additive = additives.First(a => a.Id == c.AdditiveId);
+
+                resolvedComponents.Add(new NeutralComponentResolved
+                {
+                    Additive = additive,
+                    QuantityPerLiter = c.QuantityPerLiter
+                });
+
+                jsonItems.Add(new NeutralComponentItem
+                {
+                    AdditiveId = additive.Id,
+                    QuantityPerLiter = c.QuantityPerLiter
+                });
+            }
+
+            // atualiza o JSON dos componentes
+            neutral.SetComponents(jsonItems);
+
+            // valida de novo
+            var messages = ValidateNeutral(neutral, resolvedComponents);
+
+            if (messages.Errors.Any())
+                throw new InvalidOperationException("Neutral has validation errors.");
+
+            await _context.SaveChangesAsync(ct);
+
+            return MapToResponse(neutral, resolvedComponents, messages);
+        }
+
+        public async Task<bool> DeleteAsync(int id, CancellationToken ct)
+        {
+            var neutral = await _context.Neutrals
+                .FirstOrDefaultAsync(n => n.Id == id, ct);
+
+            if (neutral == null)
+                return false;
+
+            _context.Neutrals.Remove(neutral);
+            await _context.SaveChangesAsync(ct);
+
+            return true;
+        }
+
+        public async Task<AdditiveScoresDto> AnalyzeDraftAsync( CreateNeutralRequest request, CancellationToken ct)
+        {
+            // Reaproveita a lógica existente para montar o neutro e resolver os aditivos
+            var (neutral, resolvedComponents) = await BuildNeutralAggregateAsync(request, ct);
+
+            // Se quiser, ainda pode validar o neutro (dose total, etc.),
+            // mas aqui a gente só precisa das características finais
+            var total = resolvedComponents.Sum(c => c.QuantityPerLiter);
+
+            var result = new AdditiveScoresDto();
+
+            // se não tem dose total ou ninguém tem Scores, devolve tudo 0
+            if (total <= 0 || !resolvedComponents.Any(c => c.Additive.Scores != null))
+            {
+                return result;
+            }
+
+            double WeightedAverage(Func<AdditiveScores, double> selector)
+            {
+                var numerador = resolvedComponents
+                    .Where(c => c.Additive.Scores != null)
+                    .Sum(c => selector(c.Additive.Scores!) * c.QuantityPerLiter);
+
+                return numerador / total;
+            }
+
+            result.Stabilization = WeightedAverage(s => s.Stabilization);
+            result.Emulsifying = WeightedAverage(s => s.Emulsifying);
+            result.LowPhResistance = WeightedAverage(s => s.LowPhResistance);
+            result.Creaminess = WeightedAverage(s => s.Creaminess);
+            result.Viscosity = WeightedAverage(s => s.Viscosity);
+            result.Body = WeightedAverage(s => s.Body);
+            result.Elasticity = WeightedAverage(s => s.Elasticity);
+            result.Crystallization = WeightedAverage(s => s.Crystallization);
+
+            return result;
+        }
 
         // ----------------- helpers -----------------
 
@@ -221,9 +336,7 @@ namespace icone_backend.Services.NeutralService
             return (neutral, resolvedComponents);
         }
 
-        private NeutralMessagesDto ValidateNeutral(
-            Neutral neutral,
-            List<NeutralComponentResolved> components)
+        private NeutralMessagesDto ValidateNeutral(Neutral neutral, List<NeutralComponentResolved> components)
         {
             var messages = new NeutralMessagesDto();
 
@@ -301,6 +414,7 @@ namespace icone_backend.Services.NeutralService
             return new NeutralResponse
             {
                 Id = neutral.Id,
+                Scope = neutral.Scope,
                 Name = neutral.Name,
                 GelatoType = neutral.GelatoType,
                 Method = neutral.Method,
