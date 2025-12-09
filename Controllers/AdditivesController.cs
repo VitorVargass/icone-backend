@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace icone_backend.Controllers
 {
     [ApiController]
-    [Route("additive")]
+    [Route("additives")]
     [Authorize]
     public class AdditivesController : ControllerBase
     {

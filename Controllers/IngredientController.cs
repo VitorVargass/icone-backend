@@ -7,7 +7,7 @@ namespace icone_backend.Controllers
 {
 
     [ApiController]
-    [Route("ingredient")]
+    [Route("ingredients")]
     [Authorize]
     public class IngredientController : ControllerBase
     {
