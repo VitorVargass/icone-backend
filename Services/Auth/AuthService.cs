@@ -9,25 +9,22 @@ using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-namespace icone_backend.Services
+namespace icone_backend.Services.Auth
 {
     public class AuthService : IAuthInterface
     {
         private readonly AppDbContext _context;
         private readonly TokenService _tokenService;
         private readonly TwoFactorService _twoFactorService;
-        private readonly UserService _userService;
 
         public AuthService(
             AppDbContext context,
             TokenService tokenService,
-            TwoFactorService twoFactorService,
-            UserService userService)
+            TwoFactorService twoFactorService)
         {
             _context = context;
             _tokenService = tokenService;
             _twoFactorService = twoFactorService;
-            _userService = userService;
         }
 
         // --------------------------------------------------------------------
@@ -179,7 +176,7 @@ namespace icone_backend.Services
                 };
             }
 
-            var user = await _userService.FindByIdAsync(result.UserId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == result.UserId);
             if (user == null)
             {
                 return new VerifyTwoFactorResult

@@ -2,7 +2,7 @@ using icone_backend.Dtos.Auth;
 using icone_backend.Dtos.Auth.Requests;
 using icone_backend.Interface;
 using icone_backend.Models;
-using icone_backend.Services;
+using icone_backend.Services.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;

@@ -4,7 +4,7 @@ using System.Text.Json;
 using icone_backend.Interfaces;
 
 
-namespace icone_backend.Services
+namespace icone_backend.Services.Auth
 {
     public class ResendEmailSender : IEmailSender
     {

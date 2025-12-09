@@ -4,6 +4,7 @@ using icone_backend.Interfaces;
 using icone_backend.Middleware;
 using icone_backend.Services;
 using icone_backend.Services.Additive;
+using icone_backend.Services.Auth;
 using icone_backend.Services.Ingredient;
 using icone_backend.Services.NeutralService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -99,7 +100,6 @@ namespace icone_backend
             builder.Services.AddScoped<TokenService>();
             builder.Services.AddMemoryCache();
             builder.Services.AddScoped<TwoFactorService>();
-            builder.Services.AddScoped<UserService>();
 
             var app = builder.Build();
 

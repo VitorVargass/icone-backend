@@ -5,7 +5,7 @@ using icone_backend.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
-namespace icone_backend.Services
+namespace icone_backend.Services.Auth
 {
     public class TokenService
     {
