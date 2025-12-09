@@ -215,7 +215,6 @@ namespace icone_backend.Services.Additive
                 Name = additive.Name,
                 Category = additive.Category,
                 Scope = (int)additive.Scope,
-                IsReadOnly = additive.IsReadOnly,
                 MaxDoseGL = additive.MaxDoseGL,
                 Usage = additive.Usage,
                 Description = additive.Description,

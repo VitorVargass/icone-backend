@@ -47,7 +47,6 @@ namespace icone_backend.Models
         public string Category { get; set; } = default!;
 
         public AdditiveScope Scope { get; set; }
-        public bool IsReadOnly { get; set; } = false;
 
         public double? MaxDoseGL { get; set; }
 
