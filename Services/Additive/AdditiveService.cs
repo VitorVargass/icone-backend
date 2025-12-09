@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
+
 namespace icone_backend.Services.Additive
 {
     public class AdditiveService : IAdditiveInterface
