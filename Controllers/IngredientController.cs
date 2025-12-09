@@ -1,5 +1,4 @@
-﻿using icone_backend.Dtos.Auth;
-using icone_backend.Dtos.Ingredient.Requests;
+﻿using icone_backend.Dtos.Ingredient.Requests;
 using icone_backend.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

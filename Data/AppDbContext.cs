@@ -12,6 +12,9 @@ namespace icone_backend.Data
         public DbSet<UserModel> Users { get; set; }
         public DbSet<CompaniesModel> Companies { get; set; }
         public DbSet<IngredientModel> Ingredients { get; set; }
+        public DbSet<Neutral> Neutrals { get; set; }
+        public DbSet<AdditiveModel> Additives { get; set; }
+
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -25,6 +28,10 @@ namespace icone_backend.Data
             modelBuilder.Entity<UserModel>().ToTable("users");
             modelBuilder.Entity<CompaniesModel>().ToTable("companies");
             modelBuilder.Entity<IngredientModel>().ToTable("ingredients");
+            modelBuilder.Entity<Neutral>().ToTable("neutrals");
+            modelBuilder.Entity<AdditiveModel>().ToTable("additives");
+
+
 
             modelBuilder.Entity<UserModel>(entity =>
             {
@@ -45,6 +52,8 @@ namespace icone_backend.Data
             {
                 entity.HasKey(e => e.Id);
             });
+            modelBuilder.Entity<AdditiveModel>()
+                .OwnsOne(a => a.Scores);
 
             base.OnModelCreating(modelBuilder);
         }

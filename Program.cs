@@ -4,6 +4,7 @@ using icone_backend.Interfaces;
 using icone_backend.Middleware;
 using icone_backend.Services;
 using icone_backend.Services.Ingredient;
+using icone_backend.Services.NeutralService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,7 @@ namespace icone_backend
             builder.Services.AddHttpClient<IEmailSender, ResendEmailSender>();
             builder.Services.AddScoped<IIngredientInterface, IngredientService>();
             builder.Services.AddScoped<IIngredientSolidsCalculator, IngredientSolidsCalculator>();
+            builder.Services.AddScoped<INeutral, NeutralService>();
             builder.Services.AddHttpContextAccessor();
 
             // CORS
