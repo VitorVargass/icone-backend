@@ -6,6 +6,7 @@ using icone_backend.Dtos.Neutral.Responses;
 using icone_backend.Interface;
 using icone_backend.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -202,17 +203,18 @@ namespace icone_backend.Services.NeutralService
             foreach (var c in request.Components)
             {
                 var additive = additives.First(a => a.Id == c.AdditiveId);
+                var qty = NormalizeQuantity(c.QuantityPerLiter);
 
                 resolvedComponents.Add(new NeutralComponentResolved
                 {
                     Additive = additive,
-                    QuantityPerLiter = c.QuantityPerLiter
+                    QuantityPerLiter = qty
                 });
 
                 jsonItems.Add(new NeutralComponentItem
                 {
                     AdditiveId = additive.Id,
-                    QuantityPerLiter = c.QuantityPerLiter
+                    QuantityPerLiter = qty
                 });
             }
 
@@ -283,7 +285,38 @@ namespace icone_backend.Services.NeutralService
         }
 
         // ----------------- helpers -----------------
+        private static double NormalizeQuantity(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return 0d;
 
+            var v = raw.Trim();
+
+            // aceita vírgula como decimal (pt-BR)
+            v = v.Replace(',', '.');
+
+            // separa parte inteira e decimal
+            var parts = v.Split('.', 2);
+            var intPart = parts[0];
+
+            // remove zeros à esquerda da parte inteira
+            intPart = intPart.TrimStart('0');
+            if (intPart == string.Empty)
+                intPart = "0";
+
+            v = parts.Length == 2 ? $"{intPart}.{parts[1]}" : intPart;
+
+            if (!double.TryParse(
+                    v,
+                    NumberStyles.Any,
+                    CultureInfo.InvariantCulture,
+                    out var result))
+            {
+                throw new InvalidOperationException($"Invalid quantity: '{raw}'");
+            }
+
+            return result;
+        }
 
         private async Task<(Neutral neutral, List<NeutralComponentResolved> components)>
             BuildNeutralAggregateAsync(CreateNeutralRequest request, CancellationToken ct)
@@ -316,17 +349,18 @@ namespace icone_backend.Services.NeutralService
             foreach (var c in request.Components)
             {
                 var additive = additives.First(a => a.Id == c.AdditiveId);
+                var qty = NormalizeQuantity(c.QuantityPerLiter);
 
                 resolvedComponents.Add(new NeutralComponentResolved
                 {
                     Additive = additive,
-                    QuantityPerLiter = c.QuantityPerLiter
+                    QuantityPerLiter = qty
                 });
 
                 jsonItems.Add(new NeutralComponentItem
                 {
                     AdditiveId = additive.Id,
-                    QuantityPerLiter = c.QuantityPerLiter
+                    QuantityPerLiter = qty
                 });
             }
 

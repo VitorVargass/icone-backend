@@ -3,7 +3,7 @@
     public class NeutralComponentRequest
     {
         public int AdditiveId { get; set; }
-        public double QuantityPerLiter { get; set; }
+        public string QuantityPerLiter { get; set; } = string.Empty;
     }
 
     public class CreateNeutralRequest

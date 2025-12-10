@@ -5,7 +5,7 @@
 namespace icone_backend.Migrations
 {
     /// <inheritdoc />
-    public partial class removereadonly : Migration
+    public partial class RemoveReadonly : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
