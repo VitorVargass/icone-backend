@@ -1,14 +1,15 @@
 ﻿using icone_backend.Data;
+using icone_backend.Dtos.Ingredient.Responses;
 using icone_backend.Dtos.Neutral;
 using icone_backend.Dtos.Neutral.Requests;
 using icone_backend.Dtos.Neutral.Responses;
 using icone_backend.Interface;
 using icone_backend.Models;
+using icone_backend.Utils;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using icone_backend.Utils;
 
 namespace icone_backend.Services.NeutralService
 {
@@ -251,8 +252,45 @@ namespace icone_backend.Services.NeutralService
             return true;
         }
 
+        public async Task<AdditiveScoresDto> AnalyzeDraftAsync(CreateNeutralRequest request, CancellationToken ct)
+        {
+           
+            var (neutral, resolvedComponents) = await BuildNeutralAggregateAsync(request, ct);
+            
+
+            var total = resolvedComponents.Sum(c => c.quantityPerLiter);
+
+            var result = new AdditiveScoresDto();
+
+            
+            if (total <= 0 || !resolvedComponents.Any(c => c.ingredient.Scores != null))
+            {
+                return result;
+            }
+
+            double WeightedAverage(Func<AdditiveScores, double> selector)
+            {
+                var numerador = resolvedComponents
+                    .Where(c => c.ingredient.Scores != null)
+                    .Sum(c => selector(c.ingredient.Scores!) * c.quantityPerLiter);
+
+                return numerador / total;
+            }
+
+            result.Stabilization = WeightedAverage(s => s.Stabilization);
+            result.Emulsifying = WeightedAverage(s => s.Emulsifying);
+            result.LowPhResistance = WeightedAverage(s => s.LowPhResistance);
+            result.Creaminess = WeightedAverage(s => s.Creaminess);
+            result.Viscosity = WeightedAverage(s => s.Viscosity);
+            result.Body = WeightedAverage(s => s.Body);
+            result.Elasticity = WeightedAverage(s => s.Elasticity);
+            result.Crystallization = WeightedAverage(s => s.Crystallization);
+
+            return result;
+        }
+
         // ----------------- HELPERS -----------------
-      
+
         private async Task<(Neutral neutral, List<(IngredientModel ingredient, double quantityPerLiter)> components)>
             BuildNeutralAggregateAsync(CreateNeutralRequest request, CancellationToken ct)
         {

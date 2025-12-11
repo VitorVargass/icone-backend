@@ -1,4 +1,5 @@
-﻿using icone_backend.Dtos.Neutral.Requests;
+﻿using icone_backend.Dtos.Ingredient.Responses;
+using icone_backend.Dtos.Neutral.Requests;
 using icone_backend.Dtos.Neutral.Responses;
 using icone_backend.Interface;
 using Microsoft.AspNetCore.Authorization;
@@ -76,7 +77,7 @@ namespace icone_backend.Controllers
             return NoContent();
         }
 
-        /*[HttpPost("analyze-draft")]
+        [HttpPost("analyze-draft")]
         public async Task<ActionResult<AdditiveScoresDto>> AnalyzeDraft([FromBody] CreateNeutralRequest request, CancellationToken ct)
         {
             if (!ModelState.IsValid)
@@ -85,6 +86,6 @@ namespace icone_backend.Controllers
             var scores = await _neutralService.AnalyzeDraftAsync(request, ct);
 
             return Ok(scores);
-        }*/
+        }
     }
 }
