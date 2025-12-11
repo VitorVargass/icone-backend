@@ -1,6 +1,4 @@
-﻿// Controllers/NeutralsController.cs
-using icone_backend.Dtos.Additives.Requests;
-using icone_backend.Dtos.Neutral.Requests;
+﻿using icone_backend.Dtos.Neutral.Requests;
 using icone_backend.Dtos.Neutral.Responses;
 using icone_backend.Interface;
 using Microsoft.AspNetCore.Authorization;
@@ -37,18 +35,6 @@ namespace icone_backend.Controllers
 
             return Ok(neutral);
         }
-
-        
-        [HttpPost("preview")]
-        public async Task<ActionResult<NeutralResponse>> Preview( [FromBody] CreateNeutralRequest request,CancellationToken ct)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(new { message = "Invalid neutral payload" });
-
-            var preview = await _neutralService.PreviewAsync(request, ct);
-            return Ok(preview);
-        }
-
         
         [HttpPost]
         public async Task<ActionResult<NeutralResponse>> Create( [FromBody] CreateNeutralRequest request, [FromQuery] Guid? companyId, CancellationToken ct)
@@ -90,7 +76,7 @@ namespace icone_backend.Controllers
             return NoContent();
         }
 
-        [HttpPost("analyze-draft")]
+        /*[HttpPost("analyze-draft")]
         public async Task<ActionResult<AdditiveScoresDto>> AnalyzeDraft([FromBody] CreateNeutralRequest request, CancellationToken ct)
         {
             if (!ModelState.IsValid)
@@ -99,6 +85,6 @@ namespace icone_backend.Controllers
             var scores = await _neutralService.AnalyzeDraftAsync(request, ct);
 
             return Ok(scores);
-        }
+        }*/
     }
 }

@@ -1,49 +1,42 @@
 ﻿using icone_backend.Data;
-using icone_backend.Interfaces;
-using icone_backend.Models;
-using icone_backend.Services;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using System.IdentityModel.Tokens.Jwt;
 using icone_backend.Dtos.Ingredient.Requests;
 using icone_backend.Dtos.Ingredient.Responses;
+using icone_backend.Interface;
+using icone_backend.Interfaces;
+using icone_backend.Models;
+using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace icone_backend.Services.Ingredient
 {
     public class IngredientService : IIngredientInterface
     {
         private readonly AppDbContext _context;
-        private readonly IIngredientSolidsCalculator _ingredientSolidsCalculator;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public IngredientService(AppDbContext context, IIngredientSolidsCalculator ingredientSolidsCalculator, IHttpContextAccessor httpContextAccessor)
+        public IngredientService(AppDbContext context, IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
-            _ingredientSolidsCalculator = ingredientSolidsCalculator;
             _httpContextAccessor = httpContextAccessor;
         }
 
-
         private long GetCurrentUserId()
         {
-            var user = _httpContextAccessor.HttpContext?.User;
-
-            if (user == null)
-            {
-                throw new UnauthorizedAccessException("User not authenticated.");
-            }
+            var user = _httpContextAccessor.HttpContext?.User
+                ?? throw new UnauthorizedAccessException("User not authenticated.");
 
             var idStr =
                 user.FindFirstValue(JwtRegisteredClaimNames.Sub) ??
                 user.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(idStr) || !long.TryParse(idStr, out var userId))
-            {
                 throw new UnauthorizedAccessException("Invalid user id in token.");
-            }
 
             return userId;
         }
+
+        // ----------------- READ -----------------
 
         public async Task<IEnumerable<IngredientResponse>> GetAllAsync(Guid? companyId)
         {
@@ -52,274 +45,216 @@ namespace icone_backend.Services.Ingredient
             var query = _context.Ingredients.AsQueryable();
 
             query = query.Where(i =>
-                i.Scope == IngredientScope.System || // globais
-                (i.Scope == IngredientScope.Company
-                    && companyId.HasValue
-                    && i.CompanyId == companyId)      // da empresa ativa
-                ||
-                (i.Scope == IngredientScope.User
-                    && !companyId.HasValue
-                    && i.CreatedByUserId == userId)   // pessoais do autônomo
+                i.Scope == IngredientScope.System ||
+                (i.Scope == IngredientScope.Company &&
+                    companyId.HasValue &&
+                    i.CompanyId == companyId) ||
+                (i.Scope == IngredientScope.User &&
+                    !companyId.HasValue &&
+                    i.CreatedByUserId == userId)
             );
 
-            return await query
-                .Select(i => new IngredientResponse
-                {
-                    Id = i.Id,
-                    Scope = i.Scope,
-                    CompanyId = i.CompanyId,
-                    Name = i.Name,
-                    Category = i.Category,
-                    CreatedByUserId = i.CreatedByUserId,
-
-                    WaterPct = i.WaterPct,
-                    ProteinPct  = i.ProteinPct,
-                    CarbsPct = i.CarbsPct,
-                    SugarPct = i.SugarPct,
-                    FiberPct = i.FiberPct,
-                    LactosePct = i.LactosePct,
-                    FatPct = i.FatPct,
-                    FatSaturatedPct = i.FatSaturatedPct,
-                    FatMonounsaturatedPct = i.FatMonounsaturatedPct,
-                    FatTransPct = i.FatTransPct,
-
-                    AlcoholPct = i.AlcoholPct,
-                    Pod = i.Pod,
-                    Pac = i.Pac,
-                    KcalPer100g = i.KcalPer100g,
-                    SodiumMg = i.SodiumMg,
-                    PotassiumMg = i.PotassiumMg,
-                    CholesterolMg = i.CholesterolMg,
-
-
-                    TotalSolidsPct = i.TotalSolidsPct,
-                    NonFatSolidsPct = i.NonFatSolidsPct,
-                    MilkSolidsPct = i.MilkSolidsPct,
-                    OtherSolidsPct = i.OtherSolidsPct
-
-
-
-                })
-                .ToListAsync();
+            var list = await query.AsNoTracking().ToListAsync();
+            return list.Select(x => x.ToResponse());
         }
 
         public async Task<IngredientResponse?> GetByIdAsync(int id)
         {
             var i = await _context.Ingredients.FindAsync(id);
-            if (i == null) return null;
-
-            var userId = GetCurrentUserId();
-
-            return new IngredientResponse
-            {
-                Id = i.Id,
-                Scope = i.Scope,
-                CompanyId = i.CompanyId,
-                Name = i.Name,
-                Category = i.Category,
-                CreatedByUserId = i.CreatedByUserId,
-
-                WaterPct = i.WaterPct,
-                ProteinPct = i.ProteinPct,
-                CarbsPct = i.CarbsPct,
-                SugarPct = i.SugarPct,
-                FiberPct = i.FiberPct,
-                LactosePct = i.LactosePct,
-                FatPct = i.FatPct,
-                FatSaturatedPct = i.FatSaturatedPct,
-                FatMonounsaturatedPct = i.FatMonounsaturatedPct,
-                FatTransPct = i.FatTransPct,
-
-                AlcoholPct = i.AlcoholPct,
-                Pod = i.Pod,
-                Pac = i.Pac,
-                KcalPer100g = i.KcalPer100g,
-                SodiumMg = i.SodiumMg,
-                PotassiumMg = i.PotassiumMg,
-                CholesterolMg = i.CholesterolMg,
-
-
-                TotalSolidsPct = i.TotalSolidsPct,
-                NonFatSolidsPct = i.NonFatSolidsPct,
-                MilkSolidsPct = i.MilkSolidsPct,
-                OtherSolidsPct = i.OtherSolidsPct
-
-            };
+            return i?.ToResponse();
         }
+
+        // ----------------- CREATE -----------------
 
         public async Task<IngredientResponse> CreateAsync(CreateIngredientRequest request, Guid? companyId)
         {
             var userId = GetCurrentUserId();
 
-            _ingredientSolidsCalculator.CalculateIngredientSolids(request);
-
-            var ingredient = new IngredientModel
+            var model = new IngredientModel
             {
-                
                 Name = request.Name,
                 Category = request.Category,
                 CreatedByUserId = userId,
-
-
-                WaterPct = request.WaterPct,
-                ProteinPct = request.ProteinPct,
-                CarbsPct = request.CarbsPct,
-                SugarPct = request.SugarPct,
-                FiberPct = request.FiberPct,
-                LactosePct = request.LactosePct,
-                FatPct = request.FatPct,
-                FatSaturatedPct = request.FatSaturatedPct,
-                FatMonounsaturatedPct = request.FatMonounsaturatedPct,
-                FatTransPct = request.FatTransPct,
-
-                AlcoholPct = request.AlcoholPct,
-                Pod = request.Pod,
-                Pac = request.Pac,
-                KcalPer100g = request.KcalPer100g,
-                SodiumMg = request.SodiumMg,
-                PotassiumMg = request.PotassiumMg,
-                CholesterolMg = request.CholesterolMg,
-
-
-                TotalSolidsPct = request.TotalSolidsPct,
-                NonFatSolidsPct = request.NonFatSolidsPct,
-                MilkSolidsPct = request.MilkSolidsPct,
-                OtherSolidsPct = request.OtherSolidsPct
-
+                CreatedAt = DateTime.UtcNow
             };
 
+            // Scope
             if (companyId.HasValue)
             {
-                ingredient.Scope = IngredientScope.Company;
-                ingredient.CompanyId = companyId;
+                model.Scope = IngredientScope.Company;
+                model.CompanyId = companyId;
             }
             else
             {
-                ingredient.Scope = IngredientScope.User;
-                ingredient.CompanyId = null;
+                model.Scope = IngredientScope.User;
+                model.CompanyId = null;
             }
 
-            _context.Ingredients.Add(ingredient);
+            // Nutritional
+            model.WaterPct = request.WaterPct;
+            model.ProteinPct = request.ProteinPct;
+            model.CarbsPct = request.CarbsPct;
+            model.SugarPct = request.SugarPct;
+            model.FiberPct = request.FiberPct;
+            model.LactosePct = request.LactosePct;
+            model.FatPct = request.FatPct;
+            model.FatSaturatedPct = request.FatSaturatedPct;
+            model.FatMonounsaturatedPct = request.FatMonounsaturatedPct;
+            model.FatTransPct = request.FatTransPct;
+
+            // Tech
+            model.AlcoholPct = request.AlcoholPct;
+            model.Pod = request.Pod;
+            model.Pac = request.Pac;
+            model.KcalPer100g = request.KcalPer100g;
+            model.SodiumMg = request.SodiumMg;
+            model.PotassiumMg = request.PotassiumMg;
+            model.CholesterolMg = request.CholesterolMg;
+
+            model.TotalSolidsPct = request.TotalSolidsPct;
+            model.NonFatSolidsPct = request.NonFatSolidsPct;
+            model.MilkSolidsPct = request.MilkSolidsPct;
+            model.OtherSolidsPct = request.OtherSolidsPct;
+
+            if (request.Category.Equals("Aditivos", StringComparison.OrdinalIgnoreCase))
+            {
+                // Additive
+                model.MaxDoseGL = request.MaxDoseGL;
+                model.Usage = request.Usage;
+                model.Description = request.Description;
+
+                if (request.Scores is not null)
+                {
+                    model.Scores = new AdditiveScores
+                    {
+                        Stabilization = request.Scores.Stabilization,
+                        Emulsifying = request.Scores.Emulsifying,
+                        LowPhResistance = request.Scores.LowPhResistance,
+                        Creaminess = request.Scores.Creaminess,
+                        Viscosity = request.Scores.Viscosity,
+                        Body = request.Scores.Body,
+                        Elasticity = request.Scores.Elasticity,
+                        Crystallization = request.Scores.Crystallization
+                    };
+                }
+            }
+
+            model.SetIncompatibleWith(request.IncompatibleWith ?? new List<string>());
+
+            if (request.CompatibleWith is not null)
+            {
+                var compList = request.CompatibleWith
+                    .Select(c => new AdditiveCompatibilityItem
+                    {
+                        Name = c.Name,
+                        Percentage = c.Percentage
+                    })
+                    .ToList();
+
+                model.SetCompatibleWith(compList);
+            }
+            else
+            {
+                model.SetCompatibleWith(new List<AdditiveCompatibilityItem>());
+            }
+
+            _context.Ingredients.Add(model);
             await _context.SaveChangesAsync();
 
-            return new IngredientResponse
-            {
-                Id = ingredient.Id,
-                Name = ingredient.Name,
-                Category = ingredient.Category,
-                CreatedByUserId = ingredient.CreatedByUserId,
-                Scope = ingredient.Scope,
-
-                WaterPct = ingredient.WaterPct,
-                ProteinPct = ingredient.ProteinPct,
-                CarbsPct = ingredient.CarbsPct,
-                SugarPct = ingredient.SugarPct,
-                FiberPct = ingredient.FiberPct,
-                LactosePct = ingredient.LactosePct,
-                FatPct = ingredient.FatPct,
-                FatSaturatedPct = ingredient.FatSaturatedPct,
-                FatMonounsaturatedPct = ingredient.FatMonounsaturatedPct,
-                FatTransPct = ingredient.FatTransPct,
-
-                AlcoholPct = ingredient.AlcoholPct,
-                Pod = ingredient.Pod,
-                Pac = ingredient.Pac,
-                KcalPer100g = ingredient.KcalPer100g,
-                SodiumMg = ingredient.SodiumMg,
-                PotassiumMg = ingredient.PotassiumMg,
-                CholesterolMg = ingredient.CholesterolMg,
-
-
-                TotalSolidsPct = ingredient.TotalSolidsPct,
-                NonFatSolidsPct = ingredient.NonFatSolidsPct,
-                MilkSolidsPct = ingredient.MilkSolidsPct,
-                OtherSolidsPct = ingredient.OtherSolidsPct
-
-            };
+            return model.ToResponse();
         }
+
+        // ----------------- UPDATE -----------------
 
         public async Task<IngredientResponse?> UpdateAsync(int id, UpdateIngredientRequest request)
         {
-            var ingredient = await _context.Ingredients.FindAsync(id);
-            if (ingredient == null) return null;
+            var model = await _context.Ingredients.FindAsync(id);
+            if (model == null) return null;
 
-            var userId = GetCurrentUserId();
+            model.Name = request.Name;
+            model.Category = request.Category;
+            model.UpdatedAt = DateTime.UtcNow;
 
-            _ingredientSolidsCalculator.CalculateIngredientSolids(request);
+            // Nutritional
+            model.WaterPct = request.WaterPct;
+            model.ProteinPct = request.ProteinPct;
+            model.CarbsPct = request.CarbsPct;
+            model.SugarPct = request.SugarPct;
+            model.FiberPct = request.FiberPct;
+            model.LactosePct = request.LactosePct;
+            model.FatPct = request.FatPct;
+            model.FatSaturatedPct = request.FatSaturatedPct;
+            model.FatMonounsaturatedPct = request.FatMonounsaturatedPct;
+            model.FatTransPct = request.FatTransPct;
 
+            // Tech
+            model.AlcoholPct = request.AlcoholPct;
+            model.Pod = request.Pod;
+            model.Pac = request.Pac;
+            model.KcalPer100g = request.KcalPer100g;
+            model.SodiumMg = request.SodiumMg;
+            model.PotassiumMg = request.PotassiumMg;
+            model.CholesterolMg = request.CholesterolMg;
 
-            ingredient.Name = request.Name;
-            ingredient.Category = request.Category;
-            
+            model.TotalSolidsPct = request.TotalSolidsPct;
+            model.NonFatSolidsPct = request.NonFatSolidsPct;
+            model.MilkSolidsPct = request.MilkSolidsPct;
+            model.OtherSolidsPct = request.OtherSolidsPct;
 
-            ingredient.WaterPct = request.WaterPct;
-            ingredient.ProteinPct = request.ProteinPct;
-            ingredient.CarbsPct = request.CarbsPct;
-            ingredient.SugarPct = request.SugarPct;
-            ingredient.FiberPct = request.FiberPct;
-            ingredient.LactosePct = request.LactosePct;
-            ingredient.FatPct = request.FatPct;
-            ingredient.FatSaturatedPct = request.FatSaturatedPct;
-            ingredient.FatMonounsaturatedPct = request.FatMonounsaturatedPct;
-            ingredient.FatTransPct = request.FatTransPct;
+            // Additive
+            model.MaxDoseGL = request.MaxDoseGL;
+            model.Usage = request.Usage;
+            model.Description = request.Description;
 
-            ingredient.AlcoholPct = request.AlcoholPct;
-            ingredient.Pod = request.Pod;
-            ingredient.Pac = request.Pac;
-            ingredient.KcalPer100g = request.KcalPer100g;
-            ingredient.SodiumMg = request.SodiumMg;
-            ingredient.PotassiumMg = request.PotassiumMg;
-            ingredient.CholesterolMg = request.CholesterolMg;
+            if (request.Scores is not null)
+            {
+                model.Scores ??= new AdditiveScores();
+                model.Scores.Stabilization = request.Scores.Stabilization;
+                model.Scores.Emulsifying = request.Scores.Emulsifying;
+                model.Scores.LowPhResistance = request.Scores.LowPhResistance;
+                model.Scores.Creaminess = request.Scores.Creaminess;
+                model.Scores.Viscosity = request.Scores.Viscosity;
+                model.Scores.Body = request.Scores.Body;
+                model.Scores.Elasticity = request.Scores.Elasticity;
+                model.Scores.Crystallization = request.Scores.Crystallization;
+            }
+            else
+            {
+                model.Scores = null;
+            }
 
-            ingredient.TotalSolidsPct = request.TotalSolidsPct;
-            ingredient.NonFatSolidsPct = request.NonFatSolidsPct;
-            ingredient.MilkSolidsPct = request.MilkSolidsPct;
-            ingredient.OtherSolidsPct = request.OtherSolidsPct;
+            model.SetIncompatibleWith(request.IncompatibleWith ?? new List<string>());
 
+            if (request.CompatibleWith is not null)
+            {
+                var compList = request.CompatibleWith
+                    .Select(c => new AdditiveCompatibilityItem
+                    {
+                        Name = c.Name,
+                        Percentage = c.Percentage
+                    })
+                    .ToList();
+
+                model.SetCompatibleWith(compList);
+            }
+            else
+            {
+                model.SetCompatibleWith(new List<AdditiveCompatibilityItem>());
+            }
 
             await _context.SaveChangesAsync();
 
-            return new IngredientResponse
-            {
-                Id = ingredient.Id,
-                Name = ingredient.Name,
-                Category = ingredient.Category,
-                CreatedByUserId = ingredient.CreatedByUserId,
-
-                WaterPct = ingredient.WaterPct,
-                ProteinPct = ingredient.ProteinPct,
-                CarbsPct = ingredient.CarbsPct,
-                SugarPct = ingredient.SugarPct,
-                FiberPct = ingredient.FiberPct,
-                LactosePct = ingredient.LactosePct,
-                FatPct = ingredient.FatPct,
-                FatSaturatedPct = ingredient.FatSaturatedPct,
-                FatMonounsaturatedPct = ingredient.FatMonounsaturatedPct,
-                FatTransPct = ingredient.FatTransPct,
-
-                AlcoholPct = ingredient.AlcoholPct,
-                Pod = ingredient.Pod,
-                Pac = ingredient.Pac,
-                KcalPer100g = ingredient.KcalPer100g,
-                SodiumMg = ingredient.SodiumMg,
-                PotassiumMg = ingredient.PotassiumMg,
-                CholesterolMg = ingredient.CholesterolMg,
-
-
-                TotalSolidsPct = ingredient.TotalSolidsPct,
-                NonFatSolidsPct = ingredient.NonFatSolidsPct,
-                MilkSolidsPct = ingredient.MilkSolidsPct,
-                OtherSolidsPct = ingredient.OtherSolidsPct
-
-            };
+            return model.ToResponse();
         }
+
+        // ----------------- DELETE -----------------
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var ingredient = await _context.Ingredients.FindAsync(id);
-            if (ingredient == null) return false;
+            var model = await _context.Ingredients.FindAsync(id);
+            if (model == null) return false;
 
-            _context.Ingredients.Remove(ingredient);
+            _context.Ingredients.Remove(model);
             await _context.SaveChangesAsync();
             return true;
         }

@@ -13,7 +13,6 @@ namespace icone_backend.Data
         public DbSet<CompaniesModel> Companies { get; set; }
         public DbSet<IngredientModel> Ingredients { get; set; }
         public DbSet<Neutral> Neutrals { get; set; }
-        public DbSet<AdditiveModel> Additives { get; set; }
 
 
 
@@ -29,7 +28,6 @@ namespace icone_backend.Data
             modelBuilder.Entity<CompaniesModel>().ToTable("companies");
             modelBuilder.Entity<IngredientModel>().ToTable("ingredients");
             modelBuilder.Entity<Neutral>().ToTable("neutrals");
-            modelBuilder.Entity<AdditiveModel>().ToTable("additives");
 
 
 
@@ -52,8 +50,6 @@ namespace icone_backend.Data
             {
                 entity.HasKey(e => e.Id);
             });
-            modelBuilder.Entity<AdditiveModel>()
-                .OwnsOne(a => a.Scores);
 
             base.OnModelCreating(modelBuilder);
         }

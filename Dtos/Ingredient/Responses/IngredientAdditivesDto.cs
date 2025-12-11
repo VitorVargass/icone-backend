@@ -1,4 +1,6 @@
-﻿namespace icone_backend.Dtos.Additives.Requests
+﻿using icone_backend.Models;
+
+namespace icone_backend.Dtos.Ingredient.Responses
 {
     public class AdditiveScoresDto
     {
@@ -10,5 +12,11 @@
         public double Body { get; set; }
         public double Elasticity { get; set; }
         public double Crystallization { get; set; }
+    }
+
+    public class AdditiveCompatibilityItemDto
+    {
+        public string Name { get; set; } = default!;
+        public double Percentage { get; set; }
     }
 }

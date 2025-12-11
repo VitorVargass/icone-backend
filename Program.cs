@@ -3,7 +3,6 @@ using icone_backend.Interface;
 using icone_backend.Interfaces;
 using icone_backend.Middleware;
 using icone_backend.Services;
-using icone_backend.Services.Additive;
 using icone_backend.Services.Auth;
 using icone_backend.Services.Ingredient;
 using icone_backend.Services.NeutralService;
@@ -34,7 +33,6 @@ namespace icone_backend
             builder.Services.AddScoped<IIngredientInterface, IngredientService>();
             builder.Services.AddScoped<IIngredientSolidsCalculator, IngredientSolidsCalculator>();
             builder.Services.AddScoped<INeutral, NeutralService>();
-            builder.Services.AddScoped<IAdditiveInterface, AdditiveService>();
             builder.Services.AddHttpContextAccessor();
 
             // CORS

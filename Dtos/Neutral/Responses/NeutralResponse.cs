@@ -4,8 +4,8 @@ namespace icone_backend.Dtos.Neutral.Responses
 {
     public class NeutralComponentDto
     {
-        public int AdditiveId { get; set; }
-        public string AdditiveName { get; set; } = string.Empty;
+        public int IngredientId { get; set; }
+        public string IngredientName { get; set; } = string.Empty;
         public double QuantityPerLiter { get; set; }
     }
 

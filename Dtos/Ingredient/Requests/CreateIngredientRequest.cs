@@ -1,4 +1,7 @@
-﻿namespace icone_backend.Dtos.Ingredient.Requests
+﻿using icone_backend.Dtos.Ingredient.Responses;
+using icone_backend.Models;
+
+namespace icone_backend.Dtos.Ingredient.Requests
 {
     public class CreateIngredientRequest
     {
@@ -30,5 +33,15 @@
         public double NonFatSolidsPct { get; set; }  
         public double MilkSolidsPct { get; set; } 
         public double OtherSolidsPct { get; set; }
+
+        // ---- Campos de aditivo (se Type = Additive) ----
+        public double? MaxDoseGL { get; set; }
+        public AdditiveUsage? Usage { get; set; }
+        public string? Description { get; set; }
+
+        public AdditiveScoresDto? Scores { get; set; }
+
+        public List<string> IncompatibleWith { get; set; } = new();
+        public List<AdditiveCompatibilityItemDto> CompatibleWith { get; set; } = new();
     }
 }
