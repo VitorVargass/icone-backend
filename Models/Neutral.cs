@@ -54,7 +54,7 @@ namespace icone_backend.Models
     
     public class NeutralComponentItem
     {
-        public int AdditiveId { get; set; }
+        public int IngredientId { get; set; }
         public double QuantityPerLiter { get; set; }
     }
 }

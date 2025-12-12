@@ -2,7 +2,7 @@
 {
     public class NeutralComponentRequest
     {
-        public int AdditiveId { get; set; }
+        public int IngredientId { get; set; }
         public string QuantityPerLiter { get; set; } = string.Empty;
     }
 

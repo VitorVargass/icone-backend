@@ -6,10 +6,7 @@ namespace icone_backend.Services.NeutralService
     public static class NeutralMapper
     {
         
-        public static NeutralResponse ToResponse(
-            this Neutral neutral,
-            List<(IngredientModel ingredient, double quantityPerLiter)> components,
-            NeutralMessagesDto messages)
+        public static NeutralResponse ToResponse( this Neutral neutral, List<(IngredientModel ingredient, double quantityPerLiter)> components, NeutralMessagesDto messages)
         {
             return new NeutralResponse
             {

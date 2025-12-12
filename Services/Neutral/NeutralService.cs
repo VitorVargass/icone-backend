@@ -49,7 +49,7 @@ namespace icone_backend.Services.NeutralService
                 .AsNoTracking()
                 .ToListAsync(ct);
 
-            // Escopo (igual antes)
+            
             neutrals = neutrals
                 .Where(n =>
                     n.Scope == NeutralScope.System ||
@@ -62,18 +62,18 @@ namespace icone_backend.Services.NeutralService
                 )
                 .ToList();
 
-            // Todos os componentes de todos os neutros
+            
             var allItems = neutrals
                 .SelectMany(n => n.GetComponents())
                 .ToList();
 
-            // RENOMEADO: AdditiveId é, na prática, o id do ingrediente-aditivo
+            
             var ingredientIds = allItems
-                .Select(c => c.AdditiveId)
+                .Select(c => c.IngredientId)
                 .Distinct()
                 .ToList();
 
-            // IMPORTANTE: busca ingredientes da categoria "Aditivos"
+            
             var ingredients = await _context.Ingredients
                 .Where(i => ingredientIds.Contains(i.Id) &&
                             i.Category == "Aditivos")
@@ -89,9 +89,9 @@ namespace icone_backend.Services.NeutralService
 
                 // Tuplas: (ingredient, quantityPerLiter)
                 var resolvedComponents = items
-                    .Where(ci => ingredientDict.ContainsKey(ci.AdditiveId))
+                    .Where(ci => ingredientDict.ContainsKey(ci.IngredientId))
                     .Select(ci => (
-                        ingredient: ingredientDict[ci.AdditiveId],
+                        ingredient: ingredientDict[ci.IngredientId],
                         quantityPerLiter: ci.QuantityPerLiter
                     ))
                     .ToList();
@@ -113,7 +113,7 @@ namespace icone_backend.Services.NeutralService
             var items = neutral.GetComponents();
 
             var ingredientIds = items
-                .Select(i => i.AdditiveId)
+                .Select(i => i.IngredientId)
                 .Distinct()
                 .ToList();
 
@@ -125,9 +125,9 @@ namespace icone_backend.Services.NeutralService
             var ingredientDict = ingredients.ToDictionary(i => i.Id);
 
             var resolvedComponents = items
-                .Where(ci => ingredientDict.ContainsKey(ci.AdditiveId))
+                .Where(ci => ingredientDict.ContainsKey(ci.IngredientId))
                 .Select(ci => (
-                    ingredient: ingredientDict[ci.AdditiveId],
+                    ingredient: ingredientDict[ci.IngredientId],
                     quantityPerLiter: ci.QuantityPerLiter
                 ))
                 .ToList();
@@ -137,10 +137,7 @@ namespace icone_backend.Services.NeutralService
 
         // ----------------- CREATE -----------------
 
-        public async Task<NeutralResponse> CreateAsync(
-            CreateNeutralRequest request,
-            Guid? companyId,
-            CancellationToken ct)
+        public async Task<NeutralResponse> CreateAsync(CreateNeutralRequest request,Guid? companyId, CancellationToken ct)
         {
             var userId = GetCurrentUserId();
 
@@ -186,7 +183,7 @@ namespace icone_backend.Services.NeutralService
                 return null;
 
             var ingredientIds = request.Components
-                .Select(c => c.AdditiveId)
+                .Select(c => c.IngredientId)
                 .Distinct()
                 .ToList();
 
@@ -209,7 +206,7 @@ namespace icone_backend.Services.NeutralService
 
             foreach (var c in request.Components)
             {
-                var ingredient = ingredients.First(i => i.Id == c.AdditiveId);
+                var ingredient = ingredients.First(i => i.Id == c.IngredientId);
                 
                 var qtyDouble = double.TryParse(c.QuantityPerLiter, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedQty)
                     ? parsedQty
@@ -219,7 +216,7 @@ namespace icone_backend.Services.NeutralService
 
                 jsonItems.Add(new NeutralComponentItem
                 {
-                    AdditiveId = ingredient.Id,   
+                    IngredientId = ingredient.Id,   
                     QuantityPerLiter = qtyDouble
                 });
             }
@@ -291,11 +288,10 @@ namespace icone_backend.Services.NeutralService
 
         // ----------------- HELPERS -----------------
 
-        private async Task<(Neutral neutral, List<(IngredientModel ingredient, double quantityPerLiter)> components)>
-            BuildNeutralAggregateAsync(CreateNeutralRequest request, CancellationToken ct)
+        private async Task<(Neutral neutral, List<(IngredientModel ingredient, double quantityPerLiter)> components)> BuildNeutralAggregateAsync(CreateNeutralRequest request, CancellationToken ct)
         {
             var ingredientIds = request.Components
-                .Select(c => c.AdditiveId)
+                .Select(c => c.IngredientId)
                 .Distinct()
                 .ToList();
 
@@ -320,7 +316,7 @@ namespace icone_backend.Services.NeutralService
 
             foreach (var c in request.Components)
             {
-                var ingredient = ingredients.First(i => i.Id == c.AdditiveId);
+                var ingredient = ingredients.First(i => i.Id == c.IngredientId);
 
                 var qtyDouble = double.TryParse(c.QuantityPerLiter, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedQty)
                     ? parsedQty
@@ -331,7 +327,7 @@ namespace icone_backend.Services.NeutralService
 
                 jsonItems.Add(new NeutralComponentItem
                 {
-                    AdditiveId = ingredient.Id,   
+                    IngredientId = ingredient.Id,   
                     QuantityPerLiter = qtyDouble
                 });
             }
