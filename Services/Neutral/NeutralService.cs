@@ -296,8 +296,7 @@ namespace icone_backend.Services.NeutralService
                 .ToList();
 
             var ingredients = await _context.Ingredients
-                .Where(i => ingredientIds.Contains(i.Id) &&
-                            i.Category == "Aditivos")
+                .Where(i => ingredientIds.Contains(i.Id))
                 .ToListAsync(ct);
 
             if (ingredients.Count != ingredientIds.Count)
