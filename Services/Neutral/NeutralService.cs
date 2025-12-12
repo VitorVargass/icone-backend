@@ -171,26 +171,16 @@ namespace icone_backend.Services.NeutralService
 
         // ----------------- UPDATE -----------------
 
-        public async Task<NeutralResponse?> UpdateAsync(
-            int id,
-            CreateNeutralRequest request,
-            CancellationToken ct)
+        public async Task<NeutralResponse?> UpdateAsync(int id,CreateNeutralRequest request, CancellationToken ct)
         {
-            var neutral = await _context.Neutrals
-                .FirstOrDefaultAsync(n => n.Id == id, ct);
+            var neutral = await _context.Neutrals.FirstOrDefaultAsync(n => n.Id == id, ct);
 
             if (neutral == null)
                 return null;
 
-            var ingredientIds = request.Components
-                .Select(c => c.IngredientId)
-                .Distinct()
-                .ToList();
+            var ingredientIds = request.Components.Select(c => c.IngredientId).Distinct().ToList();
 
-            var ingredients = await _context.Ingredients
-                .Where(i => ingredientIds.Contains(i.Id) &&
-                            i.Category == "Aditivos")
-                .ToListAsync(ct);
+            var ingredients = await _context.Ingredients.Where(i => ingredientIds.Contains(i.Id)).ToListAsync(ct);
 
             if (ingredients.Count != ingredientIds.Count)
                 throw new InvalidOperationException("One or more additive ingredients not found.");
