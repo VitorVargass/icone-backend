@@ -4,6 +4,7 @@ using icone_backend.Interface;
 using icone_backend.Models;
 using icone_backend.Services.Auth;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -26,23 +27,70 @@ namespace icone_backend.Controllers
         // --------------------------------------------------------------------
         // Helpers de Cookie
         // --------------------------------------------------------------------
-        private void SetAuthCookie(string jwt)
+        private static bool IsAcademyHost(string host)
         {
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                return false;
+            }
+
+            host = host.Trim().ToLowerInvariant();
+
+            // cobre: icone.academy, www.icone.academy, dashboard.icone.academy, etc.
+            return host == "icone.academy" || host.EndsWith(".icone.academy");
+        }
+
+        private CookieOptions BuildAuthCookieOptions(DateTimeOffset expires)
+        {
+            var host = HttpContext?.Request?.Host.Host ?? string.Empty;
+            var isAcademy = IsAcademyHost(host);
+
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Expires = DateTimeOffset.UtcNow.AddDays(7),
-                Domain = ".icone.academy"
+
+                Path = "/",
+
+                Expires = expires
             };
+
+            if (isAcademy)
+            {
+                cookieOptions.Secure = true;
+                cookieOptions.SameSite = SameSiteMode.None;
+                cookieOptions.Domain = ".icone.academy";
+            }
+            else
+            {
+                cookieOptions.Secure = false;
+                cookieOptions.SameSite = SameSiteMode.Lax;
+            }
+
+            return cookieOptions;
+        }
+
+        private void SetAuthCookie(string jwt)
+        {
+            
+            var cookieOptions = BuildAuthCookieOptions(DateTimeOffset.UtcNow.AddDays(7));
 
             Response.Cookies.Append(AuthCookieName, jwt, cookieOptions);
         }
 
         private void ClearAuthCookie()
         {
-            Response.Cookies.Delete(AuthCookieName);
+            var deleteOptions = BuildAuthCookieOptions(DateTimeOffset.UnixEpoch);
+            Response.Cookies.Delete(AuthCookieName, deleteOptions);
+            Response.Cookies.Append(AuthCookieName, string.Empty, new CookieOptions
+            {
+                HttpOnly = deleteOptions.HttpOnly,
+                Secure = deleteOptions.Secure,
+                SameSite = deleteOptions.SameSite,
+                Domain = deleteOptions.Domain,
+                Path = deleteOptions.Path,
+                Expires = DateTimeOffset.UtcNow.AddDays(-7),
+                MaxAge = TimeSpan.Zero
+            });
         }
 
         // --------------------------------------------------------------------
@@ -81,7 +129,6 @@ namespace icone_backend.Controllers
                     TraceId = HttpContext.TraceIdentifier
                 };
 
-                // Mapeamento simples por código de erro
                 return err.Code switch
                 {
                     "EMAIL_NOT_VERIFIED" => BadRequest(err),
@@ -104,10 +151,12 @@ namespace icone_backend.Controllers
         }
 
         // --------------------------------------------------------------------
-        // SIGNUP - EMAIL CODE (pode ficar fora do serviço por enquanto)
+        // SIGNUP - EMAIL CODE
         // --------------------------------------------------------------------
         [HttpPost("signup/email-code")]
-        public async Task<IActionResult> SendSignupEmailCode([FromServices] TwoFactorService twoFactorService, [FromBody] SignupEmailCodeRequest request)
+        public async Task<IActionResult> SendSignupEmailCode(
+            [FromServices] TwoFactorService twoFactorService,
+            [FromBody] SignupEmailCodeRequest request)
         {
             var email = request.Email?.Trim().ToLowerInvariant();
 
@@ -122,7 +171,9 @@ namespace icone_backend.Controllers
         }
 
         [HttpPost("signup/email-code/verify")]
-        public async Task<IActionResult> VerifySignupEmailCode([FromServices] TwoFactorService twoFactorService, [FromBody] VerifySignupEmailCodeRequest request)
+        public async Task<IActionResult> VerifySignupEmailCode(
+            [FromServices] TwoFactorService twoFactorService,
+            [FromBody] VerifySignupEmailCodeRequest request)
         {
             var email = request.Email?.Trim().ToLowerInvariant();
             var code = request.Code?.Trim();

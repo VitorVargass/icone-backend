@@ -78,6 +78,8 @@ namespace icone_backend.Services.Auth
                     };
                 }
 
+                var now = DateTimeOffset.UtcNow;
+
                 var user = new UserModel
                 {
                     FirstName = request.FirstName,
@@ -88,7 +90,10 @@ namespace icone_backend.Services.Auth
                     Plan = request.Plan,
                     IsActive = true,
                     CompanyId = null,
-                    CreatedAt = DateTimeOffset.UtcNow
+
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    LastLoginAt = now,              
+                    LastTwoFactorVerifiedAt = now
                 };
 
                 _context.Users.Add(user);
