@@ -347,7 +347,7 @@ namespace icone_backend.Services.NeutralService
             if (total < 5.0)
                 messages.Warnings.Add($"Total = {total:0.###} g/L → Recommended 5 g/L.");
             else if (total > 5.0)
-                messages.Errors.Add($"Total = {total:0.###} g/L → Maximum is 5 g/L.");
+                messages.Warnings.Add($"Total = {total:0.###} g/L → Maximum is 5 g/L.");
 
             // MaxDose Validation
             foreach (var comp in components)
