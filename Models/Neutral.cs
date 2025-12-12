@@ -1,5 +1,4 @@
-﻿// Models/Neutral.cs
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace icone_backend.Models
 {

@@ -127,6 +127,18 @@ namespace icone_backend.Services.NeutralService
 
             var ingredients = await _context.Ingredients.Where(i => ingredientIds.Contains(i.Id)).ToListAsync(ct);
 
+            var foundIds = ingredients.Select(i => i.Id).ToHashSet();
+
+            var missingIds = ingredientIds
+                .Where(id => !foundIds.Contains(id))
+                .ToList();
+
+            if (missingIds.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"One or more ingredients not found. Missing: {string.Join(", ", missingIds)}");
+            }
+
             if (ingredients.Count != ingredientIds.Count)
                 throw new InvalidOperationException("One or more ingredients not found.");
 
@@ -196,6 +208,19 @@ namespace icone_backend.Services.NeutralService
             var ingredientIds = request.Components.Select(c => c.IngredientId).Distinct().ToList();
 
             var ingredients = await _context.Ingredients.Where(i => ingredientIds.Contains(i.Id)).ToListAsync(ct);
+
+            var foundIds = ingredients.Select(i => i.Id).ToHashSet();
+
+            var missingIds = ingredientIds
+                .Where(id => !foundIds.Contains(id))
+                .ToList();
+
+            if (missingIds.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"One or more ingredients not found. Missing: {string.Join(", ", missingIds)}");
+            }
+
 
             if (ingredients.Count != ingredientIds.Count)
                 throw new InvalidOperationException("One or more ingredients not found.");
