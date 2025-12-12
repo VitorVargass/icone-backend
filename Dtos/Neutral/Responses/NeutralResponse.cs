@@ -6,7 +6,7 @@ namespace icone_backend.Dtos.Neutral.Responses
     {
         public int IngredientId { get; set; }
         public string IngredientName { get; set; } = string.Empty;
-        public double QuantityPerLiter { get; set; }
+        public string QuantityPerLiter { get; set; } = string.Empty;
     }
 
     public class NeutralMessagesDto

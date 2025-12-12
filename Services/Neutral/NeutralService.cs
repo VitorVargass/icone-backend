@@ -79,11 +79,24 @@ namespace icone_backend.Services.NeutralService
             {
                 var items = neutral.GetComponents();
 
-                var resolvedComponents = items.Where(ci => ingredientDict.ContainsKey(ci.IngredientId))
-                    .Select(ci => (
-                        ingredient: ingredientDict[ci.IngredientId],
-                        quantityPerLiter: ci.QuantityPerLiter
-                    ))
+                var resolvedComponents = items
+                    .Where(ci => ingredientDict.ContainsKey(ci.IngredientId))
+                    .Select(ci =>
+                    {
+                        var ok = double.TryParse(
+                            (ci.QuantityPerLiter ?? "0").Replace(',', '.'),
+                            NumberStyles.Any,
+                            CultureInfo.InvariantCulture,
+                            out var qty);
+
+                        if (!ok)
+                            throw new InvalidOperationException($"Quantidade inválida: {ci.QuantityPerLiter}");
+
+                        return (
+                            ingredient: ingredientDict[ci.IngredientId],
+                            quantityPerLiter: qty
+                        );
+                    })
                     .ToList();
 
                 var resp = neutral.ToResponse(resolvedComponents, new NeutralMessagesDto());
@@ -107,12 +120,25 @@ namespace icone_backend.Services.NeutralService
 
             var ingredientDict = ingredients.ToDictionary(i => i.Id);
 
-            var resolvedComponents = items.Where(ci => ingredientDict.ContainsKey(ci.IngredientId))
-                .Select(ci => (
-                    ingredient: ingredientDict[ci.IngredientId],
-                    quantityPerLiter: ci.QuantityPerLiter
-                ))
-                .ToList();
+            var resolvedComponents = items
+                    .Where(ci => ingredientDict.ContainsKey(ci.IngredientId))
+                    .Select(ci =>
+                    {
+                        var ok = double.TryParse(
+                            (ci.QuantityPerLiter ?? "0").Replace(',', '.'),
+                            NumberStyles.Any,
+                            CultureInfo.InvariantCulture,
+                            out var qty);
+
+                        if (!ok)
+                            throw new InvalidOperationException($"Quantidade inválida: {ci.QuantityPerLiter}");
+
+                        return (
+                            ingredient: ingredientDict[ci.IngredientId],
+                            quantityPerLiter: qty
+                        );
+                    })
+                    .ToList();  
 
             return neutral.ToResponse(resolvedComponents, new NeutralMessagesDto());
         }
@@ -153,19 +179,25 @@ namespace icone_backend.Services.NeutralService
             var resolvedComponents = new List<(IngredientModel ingredient, double quantityPerLiter)>();
             var jsonItems = new List<NeutralComponentItem>();
 
-            foreach (var c in request.Components)
-            {
+            foreach(var c in request.Components)
+{
                 var ingredient = ingredients.First(i => i.Id == c.IngredientId);
 
-                var qtyDouble = double.TryParse(c.QuantityPerLiter, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedQty) ? parsedQty
-                        : throw new InvalidOperationException($"Quantidade inválida: {c.QuantityPerLiter}");
+                var ok = double.TryParse(
+                    (c.QuantityPerLiter ?? "0").Replace(',', '.'),
+                    NumberStyles.Any,
+                    CultureInfo.InvariantCulture,
+                    out var qtyDouble);
+
+                if (!ok)
+                    throw new InvalidOperationException($"Quantidade inválida: {c.QuantityPerLiter}");
 
                 resolvedComponents.Add((ingredient, qtyDouble));
 
                 jsonItems.Add(new NeutralComponentItem
                 {
                     IngredientId = ingredient.Id,
-                    QuantityPerLiter = qtyDouble
+                    QuantityPerLiter = qtyDouble.ToString(CultureInfo.InvariantCulture) // <-- string no JSON
                 });
             }
 
@@ -247,7 +279,7 @@ namespace icone_backend.Services.NeutralService
                 jsonItems.Add(new NeutralComponentItem
                 {
                     IngredientId = ingredient.Id,
-                    QuantityPerLiter = qtyDouble
+                    QuantityPerLiter = qtyDouble.ToString(CultureInfo.InvariantCulture)
                 });
             }
 
