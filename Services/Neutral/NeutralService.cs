@@ -17,11 +17,16 @@ namespace icone_backend.Services.NeutralService
     {
         private readonly AppDbContext _context;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly NeutralValidator _validator;
 
-        public NeutralService(AppDbContext context, IHttpContextAccessor httpContextAccessor)
+        public NeutralService(
+            AppDbContext context,
+            IHttpContextAccessor httpContextAccessor,
+            NeutralValidator validator)
         {
             _context = context;
             _httpContextAccessor = httpContextAccessor;
+            _validator = validator;
         }
 
         private long GetCurrentUserId()
@@ -45,13 +50,10 @@ namespace icone_backend.Services.NeutralService
         {
             var userId = GetCurrentUserId();
 
-            var neutrals = await _context.Neutrals
-                .AsNoTracking()
-                .ToListAsync(ct);
+            var neutrals = await _context.Neutrals.AsNoTracking().ToListAsync(ct);
 
-            
             neutrals = neutrals
-                .Where(n =>
+               .Where(n =>
                     n.Scope == NeutralScope.System ||
                     (n.Scope == NeutralScope.Company &&
                         companyId.HasValue &&
@@ -62,22 +64,12 @@ namespace icone_backend.Services.NeutralService
                 )
                 .ToList();
 
-            
-            var allItems = neutrals
-                .SelectMany(n => n.GetComponents())
-                .ToList();
+            var allItems = neutrals.SelectMany(n => n.GetComponents()).ToList();
 
-            
-            var ingredientIds = allItems
-                .Select(c => c.IngredientId)
-                .Distinct()
-                .ToList();
+            var ingredientIds = allItems.Select(c => c.IngredientId).Distinct().ToList();
 
-            
-            var ingredients = await _context.Ingredients
-                .Where(i => ingredientIds.Contains(i.Id) &&
-                            i.Category == "Aditivos")
-                .ToListAsync(ct);
+          
+            var ingredients = await _context.Ingredients.Where(i => ingredientIds.Contains(i.Id)).ToListAsync(ct);
 
             var ingredientDict = ingredients.ToDictionary(i => i.Id);
 
@@ -87,9 +79,7 @@ namespace icone_backend.Services.NeutralService
             {
                 var items = neutral.GetComponents();
 
-                // Tuplas: (ingredient, quantityPerLiter)
-                var resolvedComponents = items
-                    .Where(ci => ingredientDict.ContainsKey(ci.IngredientId))
+                var resolvedComponents = items.Where(ci => ingredientDict.ContainsKey(ci.IngredientId))
                     .Select(ci => (
                         ingredient: ingredientDict[ci.IngredientId],
                         quantityPerLiter: ci.QuantityPerLiter
@@ -105,27 +95,19 @@ namespace icone_backend.Services.NeutralService
 
         public async Task<NeutralResponse?> GetByIdAsync(int id, CancellationToken ct)
         {
-            var neutral = await _context.Neutrals
-                .FirstOrDefaultAsync(n => n.Id == id, ct);
+            var neutral = await _context.Neutrals.FirstOrDefaultAsync(n => n.Id == id, ct);
 
             if (neutral == null) return null;
 
             var items = neutral.GetComponents();
 
-            var ingredientIds = items
-                .Select(i => i.IngredientId)
-                .Distinct()
-                .ToList();
+            var ingredientIds = items.Select(i => i.IngredientId).Distinct().ToList();
 
-            var ingredients = await _context.Ingredients
-                .Where(i => ingredientIds.Contains(i.Id) &&
-                            i.Category == "Aditivos")
-                .ToListAsync(ct);
+            var ingredients = await _context.Ingredients.Where(i => ingredientIds.Contains(i.Id)).ToListAsync(ct);
 
             var ingredientDict = ingredients.ToDictionary(i => i.Id);
 
-            var resolvedComponents = items
-                .Where(ci => ingredientDict.ContainsKey(ci.IngredientId))
+            var resolvedComponents = items.Where(ci => ingredientDict.ContainsKey(ci.IngredientId))
                 .Select(ci => (
                     ingredient: ingredientDict[ci.IngredientId],
                     quantityPerLiter: ci.QuantityPerLiter
@@ -137,160 +119,16 @@ namespace icone_backend.Services.NeutralService
 
         // ----------------- CREATE -----------------
 
-        public async Task<NeutralResponse> CreateAsync(CreateNeutralRequest request,Guid? companyId, CancellationToken ct)
+        public async Task<NeutralResponse> CreateAsync(CreateNeutralRequest request, Guid? companyId, CancellationToken ct)
         {
             var userId = GetCurrentUserId();
-
-            // Monta o aggregate (Neutral + componentes resolvidos)
-            var (neutral, resolvedComponents) = await BuildNeutralAggregateAsync(request, ct);
-
-            neutral.CreatedByUserId = userId;
-            neutral.CreatedAt = DateTime.UtcNow;
-
-            if (companyId.HasValue)
-            {
-                neutral.Scope = NeutralScope.Company;
-                neutral.CompanyId = companyId;
-            }
-            else
-            {
-                neutral.Scope = NeutralScope.User;
-                neutral.CompanyId = null;
-            }
-
-            var messages = ValidateNeutral(neutral, resolvedComponents);
-
-            if (messages.Errors.Any())
-                throw new InvalidOperationException("Neutral has validation errors.");
-
-            _context.Neutrals.Add(neutral);
-            await _context.SaveChangesAsync(ct);
-
-            return neutral.ToResponse(resolvedComponents, messages);
-        }
-
-        // ----------------- UPDATE -----------------
-
-        public async Task<NeutralResponse?> UpdateAsync(int id,CreateNeutralRequest request, CancellationToken ct)
-        {
-            var neutral = await _context.Neutrals.FirstOrDefaultAsync(n => n.Id == id, ct);
-
-            if (neutral == null)
-                return null;
 
             var ingredientIds = request.Components.Select(c => c.IngredientId).Distinct().ToList();
 
             var ingredients = await _context.Ingredients.Where(i => ingredientIds.Contains(i.Id)).ToListAsync(ct);
 
             if (ingredients.Count != ingredientIds.Count)
-                throw new InvalidOperationException("One or more additive ingredients not found.");
-
-            neutral.Name = request.Name;
-            neutral.GelatoType = request.GelatoType;
-            neutral.Method = request.Method;
-            neutral.RecommendedDoseGPerKg = request.RecommendedDoseGPerKg;
-            neutral.UpdatedAt = DateTime.UtcNow;
-
-            var resolvedComponents = new List<(IngredientModel ingredient, double quantityPerLiter)>();
-            var jsonItems = new List<NeutralComponentItem>();
-
-            foreach (var c in request.Components)
-            {
-                var ingredient = ingredients.First(i => i.Id == c.IngredientId);
-                
-                var qtyDouble = double.TryParse(c.QuantityPerLiter, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedQty)
-                    ? parsedQty
-                    : throw new InvalidOperationException($"Quantidade inválida: {c.QuantityPerLiter}");
-
-                resolvedComponents.Add((ingredient, qtyDouble));
-
-                jsonItems.Add(new NeutralComponentItem
-                {
-                    IngredientId = ingredient.Id,   
-                    QuantityPerLiter = qtyDouble
-                });
-            }
-
-            neutral.SetComponents(jsonItems);
-
-            var messages = ValidateNeutral(neutral, resolvedComponents);
-
-            if (messages.Errors.Any())
-                throw new InvalidOperationException("Neutral has validation errors.");
-
-            await _context.SaveChangesAsync(ct);
-
-            return neutral.ToResponse(resolvedComponents, messages);
-        }
-
-        // ----------------- DELETE -----------------
-
-        public async Task<bool> DeleteAsync(int id, CancellationToken ct)
-        {
-            var neutral = await _context.Neutrals
-                .FirstOrDefaultAsync(n => n.Id == id, ct);
-
-            if (neutral == null)
-                return false;
-
-            _context.Neutrals.Remove(neutral);
-            await _context.SaveChangesAsync(ct);
-
-            return true;
-        }
-
-       /* public async Task<AdditiveScoresDto> AnalyzeDraftAsync(CreateNeutralRequest request, CancellationToken ct)
-        {
-           
-            var (neutral, resolvedComponents) = await BuildNeutralAggregateAsync(request, ct);
-            
-
-            var total = resolvedComponents.Sum(c => c.quantityPerLiter);
-
-            var result = new AdditiveScoresDto();
-
-            
-            if (total <= 0 || !resolvedComponents.Any(c => c.ingredient.Scores != null))
-            {
-                return result;
-            }
-
-            double WeightedAverage(Func<AdditiveScores, double> selector)
-            {
-                var numerador = resolvedComponents
-                    .Where(c => c.ingredient.Scores != null)
-                    .Sum(c => selector(c.ingredient.Scores!) * c.quantityPerLiter);
-
-                return numerador / total;
-            }
-
-            result.Stabilization = WeightedAverage(s => s.Stabilization);
-            result.Emulsifying = WeightedAverage(s => s.Emulsifying);
-            result.LowPhResistance = WeightedAverage(s => s.LowPhResistance);
-            result.Creaminess = WeightedAverage(s => s.Creaminess);
-            result.Viscosity = WeightedAverage(s => s.Viscosity);
-            result.Body = WeightedAverage(s => s.Body);
-            result.Elasticity = WeightedAverage(s => s.Elasticity);
-            result.Crystallization = WeightedAverage(s => s.Crystallization);
-
-            return result;
-        }*/
-
-        // ----------------- HELPERS -----------------
-
-        private async Task<(Neutral neutral, List<(IngredientModel ingredient, double quantityPerLiter)> components)> BuildNeutralAggregateAsync(CreateNeutralRequest request, CancellationToken ct)
-        {
-            var ingredientIds = request.Components
-                .Select(c => c.IngredientId)
-                .Distinct()
-                .ToList();
-
-            var ingredients = await _context.Ingredients
-                .Where(i => ingredientIds.Contains(i.Id))
-                .ToListAsync(ct);
-
-            if (ingredients.Count != ingredientIds.Count)
-                throw new InvalidOperationException("One or more additive ingredients not found.");
+                throw new InvalidOperationException("One or more ingredients not found.");
 
             var neutral = new Neutral
             {
@@ -307,96 +145,112 @@ namespace icone_backend.Services.NeutralService
             {
                 var ingredient = ingredients.First(i => i.Id == c.IngredientId);
 
-                var qtyDouble = double.TryParse(c.QuantityPerLiter, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedQty)
-                    ? parsedQty
-                    : throw new InvalidOperationException($"Quantidade inválida: {c.QuantityPerLiter}");
-
+                var qtyDouble = double.TryParse(c.QuantityPerLiter, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedQty) ? parsedQty
+                        : throw new InvalidOperationException($"Quantidade inválida: {c.QuantityPerLiter}");
 
                 resolvedComponents.Add((ingredient, qtyDouble));
 
                 jsonItems.Add(new NeutralComponentItem
                 {
-                    IngredientId = ingredient.Id,   
+                    IngredientId = ingredient.Id,
                     QuantityPerLiter = qtyDouble
                 });
             }
 
             neutral.SetComponents(jsonItems);
 
-            return (neutral, resolvedComponents);
+            neutral.CreatedByUserId = userId;
+            neutral.CreatedAt = DateTime.UtcNow;
+
+            if (companyId.HasValue)
+            {
+                neutral.Scope = NeutralScope.Company;
+                neutral.CompanyId = companyId;
+            }
+            else
+            {
+                neutral.Scope = NeutralScope.User;
+                neutral.CompanyId = null;
+            }
+
+            var messages = _validator.Validate(neutral, resolvedComponents);
+
+            if (messages.Errors.Any())
+                throw new InvalidOperationException("Neutral has validation errors.");
+
+            _context.Neutrals.Add(neutral);
+            await _context.SaveChangesAsync(ct);
+
+            return neutral.ToResponse(resolvedComponents, messages);
         }
 
-        
-        private NeutralMessagesDto ValidateNeutral(Neutral neutral, List<(IngredientModel ingredient, double quantityPerLiter)> components)
+        // ----------------- UPDATE -----------------
+
+        public async Task<NeutralResponse?> UpdateAsync(int id, CreateNeutralRequest request, CancellationToken ct)
         {
-            var messages = new NeutralMessagesDto();
+            var neutral = await _context.Neutrals.FirstOrDefaultAsync(n => n.Id == id, ct);
 
-            var total = components.Sum(c => c.quantityPerLiter);
-            neutral.TotalDosagePerLiter = total;
+            if (neutral == null)
+                return null;
 
-            if (total < 5.0)
-                messages.Warnings.Add($"Total = {total:0.###} g/L → Recommended 5 g/L.");
-            else if (total > 5.0)
-                messages.Warnings.Add($"Total = {total:0.###} g/L → Maximum is 5 g/L.");
+            var ingredientIds = request.Components.Select(c => c.IngredientId).Distinct().ToList();
 
-            // MaxDose Validation
-            foreach (var comp in components)
+            var ingredients = await _context.Ingredients.Where(i => ingredientIds.Contains(i.Id)).ToListAsync(ct);
+
+            if (ingredients.Count != ingredientIds.Count)
+                throw new InvalidOperationException("One or more ingredients not found.");
+
+            neutral.Name = request.Name;
+            neutral.GelatoType = request.GelatoType;
+            neutral.Method = request.Method;
+            neutral.RecommendedDoseGPerKg = request.RecommendedDoseGPerKg;
+            neutral.UpdatedAt = DateTime.UtcNow;
+
+            var resolvedComponents = new List<(IngredientModel ingredient, double quantityPerLiter)>();
+            var jsonItems = new List<NeutralComponentItem>();
+
+            foreach (var c in request.Components)
             {
-                var i = comp.ingredient;
+                var ingredient = ingredients.First(i => i.Id == c.IngredientId);
 
-                if (i.MaxDoseGL.HasValue && comp.quantityPerLiter > i.MaxDoseGL.Value)
+                var qtyDouble =
+                    double.TryParse(c.QuantityPerLiter, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedQty) ? parsedQty
+                        : throw new InvalidOperationException($"Quantidade inválida: {c.QuantityPerLiter}");
+
+                resolvedComponents.Add((ingredient, qtyDouble));
+
+                jsonItems.Add(new NeutralComponentItem
                 {
-                    messages.Errors.Add(
-                        $"Ingredient '{i.Name}': {comp.quantityPerLiter:0.###} g/L exceeds max dose {i.MaxDoseGL:0.###} g/L."
-                    );
-                }
+                    IngredientId = ingredient.Id,
+                    QuantityPerLiter = qtyDouble
+                });
             }
 
-            // Method HOT/COLD/BOTH
-            var method = neutral.Method?.Trim().ToLowerInvariant();
-            foreach (var comp in components)
-            {
-                var i = comp.ingredient;
+            neutral.SetComponents(jsonItems);
 
-                if (string.IsNullOrWhiteSpace(method)) continue;
+            var messages = _validator.Validate(neutral, resolvedComponents);
 
-                if (method == "hot" && i.Usage == AdditiveUsage.Cold)
-                {
-                    messages.Warnings.Add(
-                        $"Ingredient '{i.Name}' is marked as Cold but neutral method is Hot."
-                    );
-                }
+            if (messages.Errors.Any())
+                throw new InvalidOperationException("Neutral has validation errors.");
 
-                if (method == "cold" && i.Usage == AdditiveUsage.Hot)
-                {
-                    messages.Warnings.Add(
-                        $"Ingredient '{i.Name}' is marked as Hot but neutral method is Cold."
-                    );
-                }
-            }
+            await _context.SaveChangesAsync(ct);
 
-            // Incompatibles
-            for (int x = 0; x < components.Count; x++)
-            {
-                for (int y = x + 1; y < components.Count; y++)
-                {
-                    var a = components[x].ingredient;
-                    var b = components[y].ingredient;
+            return neutral.ToResponse(resolvedComponents, messages);
+        }
 
-                    var aIncompat = a.GetIncompatibleWith();
-                    var bIncompat = b.GetIncompatibleWith();
+        // ----------------- DELETE -----------------
 
-                    if (aIncompat.Any(n => string.Equals(n, b.Name, StringComparison.OrdinalIgnoreCase)) ||
-                        bIncompat.Any(n => string.Equals(n, a.Name, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        messages.Errors.Add(
-                            $"Ingredients '{a.Name}' and '{b.Name}' are marked as incompatible."
-                        );
-                    }
-                }
-            }
+        public async Task<bool> DeleteAsync(int id, CancellationToken ct)
+        {
+            var neutral = await _context.Neutrals.FirstOrDefaultAsync(n => n.Id == id, ct);
 
-            return messages;
+            if (neutral == null)
+                return false;
+
+            _context.Neutrals.Remove(neutral);
+            await _context.SaveChangesAsync(ct);
+
+            return true;
         }
     }
 }

@@ -33,6 +33,7 @@ namespace icone_backend
             builder.Services.AddScoped<IIngredientInterface, IngredientService>();
             builder.Services.AddScoped<IIngredientSolidsCalculator, IngredientSolidsCalculator>();
             builder.Services.AddScoped<INeutral, NeutralService>();
+            builder.Services.AddScoped<NeutralValidator>();
             builder.Services.AddHttpContextAccessor();
 
             // CORS
