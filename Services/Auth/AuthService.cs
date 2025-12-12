@@ -47,7 +47,7 @@ namespace icone_backend.Services.Auth
         {
             try
             {
-                var email = request.Email?.Trim().ToLowerInvariant();
+                var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
 
                 if (string.IsNullOrEmpty(email) || !_twoFactorService.IsSignupEmailVerified(email))
                 {
@@ -82,7 +82,7 @@ namespace icone_backend.Services.Auth
                 {
                     FirstName = request.FirstName,
                     LastName = request.LastName,
-                    Email = email ?? string.Empty,
+                    Email = email,
                     PasswordHash = HashPassword(request.Password),
                     Role = "admin",
                     Plan = request.Plan,

@@ -107,9 +107,7 @@ namespace icone_backend.Controllers
         // SIGNUP - EMAIL CODE (pode ficar fora do serviço por enquanto)
         // --------------------------------------------------------------------
         [HttpPost("signup/email-code")]
-        public async Task<IActionResult> SendSignupEmailCode(
-            [FromServices] TwoFactorService twoFactorService,
-            [FromBody] SignupEmailCodeRequest request)
+        public async Task<IActionResult> SendSignupEmailCode([FromServices] TwoFactorService twoFactorService, [FromBody] SignupEmailCodeRequest request)
         {
             var email = request.Email?.Trim().ToLowerInvariant();
 
@@ -124,9 +122,7 @@ namespace icone_backend.Controllers
         }
 
         [HttpPost("signup/email-code/verify")]
-        public async Task<IActionResult> VerifySignupEmailCode(
-            [FromServices] TwoFactorService twoFactorService,
-            [FromBody] VerifySignupEmailCodeRequest request)
+        public async Task<IActionResult> VerifySignupEmailCode([FromServices] TwoFactorService twoFactorService, [FromBody] VerifySignupEmailCodeRequest request)
         {
             var email = request.Email?.Trim().ToLowerInvariant();
             var code = request.Code?.Trim();
