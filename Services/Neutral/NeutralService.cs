@@ -239,7 +239,7 @@ namespace icone_backend.Services.NeutralService
             return true;
         }
 
-        public async Task<AdditiveScoresDto> AnalyzeDraftAsync(CreateNeutralRequest request, CancellationToken ct)
+       /* public async Task<AdditiveScoresDto> AnalyzeDraftAsync(CreateNeutralRequest request, CancellationToken ct)
         {
            
             var (neutral, resolvedComponents) = await BuildNeutralAggregateAsync(request, ct);
@@ -274,7 +274,7 @@ namespace icone_backend.Services.NeutralService
             result.Crystallization = WeightedAverage(s => s.Crystallization);
 
             return result;
-        }
+        }*/
 
         // ----------------- HELPERS -----------------
 

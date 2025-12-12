@@ -13,6 +13,6 @@ namespace icone_backend.Interface
         Task<NeutralResponse?> UpdateAsync(int id, CreateNeutralRequest request, CancellationToken ct);
         Task<bool> DeleteAsync(int id, CancellationToken ct);
 
-        Task<AdditiveScoresDto> AnalyzeDraftAsync(CreateNeutralRequest request, CancellationToken ct);
+        //Task<AdditiveScoresDto> AnalyzeDraftAsync(CreateNeutralRequest request, CancellationToken ct);
     }
 }
