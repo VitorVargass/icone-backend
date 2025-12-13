@@ -154,9 +154,7 @@ namespace icone_backend.Controllers
         // SIGNUP - EMAIL CODE
         // --------------------------------------------------------------------
         [HttpPost("signup/email-code")]
-        public async Task<IActionResult> SendSignupEmailCode(
-            [FromServices] TwoFactorService twoFactorService,
-            [FromBody] SignupEmailCodeRequest request)
+        public async Task<IActionResult> SendSignupEmailCode([FromServices] TwoFactorService twoFactorService, [FromBody] SignupEmailCodeRequest request)
         {
             var email = request.Email?.Trim().ToLowerInvariant();
 
